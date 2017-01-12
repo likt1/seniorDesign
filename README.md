@@ -1,4 +1,6 @@
 # Senior Design Stuff 
 
-configTemplate.ini
-dropboxTest.py
+##VM
+Get the latest BBBW VM  
+##companionApp
+Companion app source code
