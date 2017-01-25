@@ -13,7 +13,10 @@ INSPIRADO
 Proof of Concept: 
     Generate WAV and call script to save to cloud - C++ Program
 
+Run with dropboxTest.py in same directory
+
 Author: Thomas Foertmeyer
+Issue: #1
 """
 
 namespace little_endian_io

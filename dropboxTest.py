@@ -1,26 +1,41 @@
+#!/usr/bin/python
+
+import sys
 import dropbox
 import ConfigParser
 import datetime
 
-print 'Dropbox API test'
+"""
+INSPIRADO
 
-### Load key, secret, and access token from config.ini ###
-ini = 'config.ini'
-config = ConfigParser.SafeConfigParser()
-config.read(ini)
+Proof of Concept: 
+    Upload to Dropbox - Python script
 
-app_key = config.get('Dropbox','app_key')
-app_secret = config.get('Dropbox','app_secret')
-access_token = config.get('Dropbox','access_token')
-###
+Requires ini file with Dropbox API credentials
 
-dbx = dropbox.Dropbox(access_token)
-dbx.users_get_current_account()
+Author: Thomas Foertmeyer
+Issue: #1
+"""
 
-time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+def main(fileName):
+    ### Load key, secret, and access token from config.ini ###
+    ini = 'config.ini'
+    config = ConfigParser.SafeConfigParser()
+    config.read(ini)
 
-#Upload a dummy text file
-dbx.files_upload(time,'/'+time+'.txt')
+    app_key = config.get('Dropbox','app_key')
+    app_secret = config.get('Dropbox','app_secret')
+    access_token = config.get('Dropbox','access_token')
+    ###
 
-for entry in dbx.files_list_folder('').entries:
-    print(entry.name)
+    dbx = dropbox.Dropbox(access_token)
+    dbx.users_get_current_account()
+
+    dbx.files_upload(fileName,'/'+fileName)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print 'Usage: {0} <file name>'.format(sys.argv[0])
+        sys.exit(-1)
+    fileName = str(sys.argv[1]);
+    main(fileName)
