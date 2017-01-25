@@ -4,3 +4,5 @@
 Get the latest BBBW VM  
 ##companionApp
 Companion app source code
+##proofOfConcept
+Code to demonstrate capabilities
