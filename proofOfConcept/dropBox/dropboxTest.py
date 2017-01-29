@@ -28,7 +28,11 @@ def main(fileName):
     dbx = dropbox.Dropbox(access_token)
     dbx.users_get_current_account()
 
-    dbx.files_upload(fileName,'/'+fileName)
+    try:
+        with open(fileName, 'rb') as f:
+            dbx.files_upload(f.read(),'/'+fileName, mute=True)
+    except Exception as err:
+        print("Failed to upload %s\n%s" % (file, err))
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
