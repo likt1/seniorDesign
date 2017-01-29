@@ -6,7 +6,7 @@ bit = 12;
 samplesN = sec * sample_rate;
 samples = zeros(samplesN,1);
 
-% Generate random 12 bit unsigned values (0 is loudest)
+% Generate random 12 bit unsigned values
 for i = 1:samplesN
     samples(i) = randi(2^bit);
 end
