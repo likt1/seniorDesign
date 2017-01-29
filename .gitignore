@@ -1,1 +1,3 @@
 VM/.vagrant/*
+**/*log
+**/networks
