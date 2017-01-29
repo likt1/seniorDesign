@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 import dropbox
-import ConfigParser
+import configparser
 import datetime
 
 """
@@ -28,11 +28,15 @@ def main(fileName):
     dbx = dropbox.Dropbox(access_token)
     dbx.users_get_current_account()
 
-    dbx.files_upload(fileName,'/'+fileName)
+    try:
+        with open(fileName, 'rb') as f:
+            dbx.files_upload(f.read(),'/'+fileName, mute=True)
+    except Exception as err:
+        print("Failed to upload %s\n%s" % (file, err))
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print 'Usage: {0} <file name>'.format(sys.argv[0])
+        print('Usage: {0} <file name>'.format(sys.argv[0]))
         sys.exit(-1)
     fileName = str(sys.argv[1]);
     main(fileName)
