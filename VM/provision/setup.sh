@@ -9,6 +9,11 @@ apt-get install git -y > /dev/null
 echo "Installing Vim"
 apt-get install vim -y > /dev/null
 
+echo "Installing sox"
+apt-get install sox
+
+echo "Installing bluetooth"
+apt-get install bluez
 # if we discover any new packages are necessary, add them here and pipe to null
 
 # run custom linking & configuration file copying here (some examples are commented below)
