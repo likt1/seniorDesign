@@ -4,7 +4,7 @@
 ### BEGIN INIT INFO
 # Provides:		<NAME>
 # Required-Start:	$local_fs $network $named $time $syslog
-# Required-Stop:	#local_fs $network $named $time $syslog
+# Required-Stop:	$local_fs $network $named $time $syslog
 # Default-Start:	2 3 4 5
 # Default-Stop:		0 1 6
 # Description:		<DESCRIPTION>
@@ -17,8 +17,8 @@ PIDFILE=/var/run/<NAME>.pid
 LOGFILE=/var/log/<NAME>.log
 
 start() {
-	if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE); then
-		echo 'Service already running' >$2
+	if [ -f $PIDFILE ]; then
+		echo 'Service already running' >&2
 		return 1
 	fi
 	echo 'Starting service...' >&2
@@ -28,12 +28,13 @@ start() {
 }
 
 stop() {
-	if [ ! -f $PIDFILE ] || ! kill -0 $(cat $PIDFILE); then
-		echo 'Service not running' >$2
+	if [ ! -f $PIDFILE ]; then
+		echo 'Service not running' >&2
 		return 1
 	fi
 	echo 'Stopping service...' >&2
-	kill -15 $(cat "$PIDFILE") && rm -f "$PIDFILE"
+	kill -15 $(cat "$PIDFILE") 
+	rm -f "$PIDFILE"
 	echo 'Service stopped' >&2
 }
 
@@ -67,5 +68,3 @@ case "$1" in
 	*)
 		echo "Usage: $0 {start|stop|restart|uninstall}"
 esac
-	
-}

@@ -2,7 +2,7 @@
 #include <string.h>  // For string ops...
 
 // custom macros to configure log location and log content
-#define DIR_LOC "/home/vagrant/"
+#define DIR_LOC "/home/kevin/"
 #define FILE_NAME "poc-service-test.log"
 #define TO_LOG "hello\n"
 
