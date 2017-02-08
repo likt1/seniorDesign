@@ -21,7 +21,8 @@ Usage:
 
     Example:
     ./dropboxSync.py "./" "/"
-        This will check for differences between the current directory
+        This will check for differences between the current directory and the root of the app 
+        folder on dropbox and prompt the use for input on how to deal with discrepancies.
 
 Author: Thomas Foertmeyer
 """
