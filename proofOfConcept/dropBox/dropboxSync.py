@@ -16,6 +16,13 @@ INSPIRADO
 Proof of Concept: 
     Sync with Dropbox - Python script
 
+Usage:
+    ./dropboxSync.py <local directory> <dropbox directory>
+
+    Example:
+    ./dropboxSync.py "./" "/"
+        This will check for differences between the current directory
+
 Author: Thomas Foertmeyer
 """
 
