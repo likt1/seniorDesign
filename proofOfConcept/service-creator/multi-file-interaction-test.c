@@ -1,18 +1,10 @@
 // Program to test file read / write at same time by 2 different executions
-// Usage (separate terminals): gcc test-service-prgm.c -o logger
+// Usage: gcc test-service-prgm.c -o logger
 //    ./logger r
 //    ./logger a
 //    ./logger w
-// Usage (service check): gcc test-service-prgm.c -o test-service-read
-//    mkdir /opt/service-prgms/
-//    mv test-service-read /opt/service-prgms/
-//    python3 service-creator.py
-//      test-service-read
-//      "/opt/service-prgms/test-service-read r"
-//      root
-//      simple service to read from one file (/home/vagrant/service-test.log) to another (/home/vagrant/test-service-read.log)
-//    #then read from / write to the above locations to validate the service is running
-//    see service-creator.py for using the new service 
+// all in separate terminals / processes
+
 
 #include <stdio.h>
 #include <string.h>
@@ -35,13 +27,9 @@ void ClearString(char* buffer);
 // to be run in tandem with another instance of the file (validate read / write to same file)
 int main(int argc, char *argv[])
 {
-    char fileLocation[BUFFER_SIZE];
+    char fileLocation[50];
     strcpy(fileLocation,DIR_LOC);
     strcat(fileLocation,FILE_NAME);
-
-    char readLog[BUFFER_SIZE];
-    strcpy(readLog,DIR_LOC);
-    strcat(readLog,"test-service-read.log");
 
     char* buffer;
     buffer = (char*)malloc(BUFFER_SIZE);
@@ -56,7 +44,7 @@ int main(int argc, char *argv[])
         {
             if (argv[1][0] == 'a') 
             {
-                sleep(2);
+                sleep(2); // pause 1 sec
                 AppendFile(fileLocation, TO_LOG(appended));
             } 
             else if (argv[1][0] == 'w')
@@ -67,7 +55,9 @@ int main(int argc, char *argv[])
             {
                 sleep(1);
                 ReadFile(fileLocation, buffer);
-                AppendFile(readLog, buffer); // continuously log most recent entry 
+                printf("found: ");
+                printf(buffer);    
+                printf("\n");
             }
         } 
         else {
@@ -115,9 +105,6 @@ int AppendFile(char* fileLocation, char* textToWrite)
 
 int ReadFile(char* fileLocation, char* buffer)
 {
-    // this current code interates through all lines in a file, but only prints the last
-    // the while loop could be modified to do further action upon each line...
-
     FILE *fptr = fopen(fileLocation, "r");
     if(fptr == NULL)
     {

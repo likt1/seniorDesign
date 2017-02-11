@@ -1,6 +1,19 @@
 #!/bin/python3
 # Python script to create and install a service based on a template
 # Inspired by / based on https://gist.github.com/naholyr/4275302
+
+# Usage: python3 service-creator.py
+#      <enter service name>
+#      "<enter executable and any arguments>"
+#      <enter user here (probably root)>
+#      <enter description of what you hope to do here>
+#    /etc/init.d/<service name> {start|stop|restart|uninstall}
+#    systemctl {start|stop|restart|uninstall} <service name>
+#    service <service name> {start|stop|restart|uninstall}
+#
+#    note: this program makes a service out of a command, so put sets of commands in a 
+#      script or executable, then move to /opt/service-prgms/ and enter
+#        "/opt/service-prgms/<executable name> <any args>" for the 2nd part of the creator
 import os
 import pwd
 import subprocess
