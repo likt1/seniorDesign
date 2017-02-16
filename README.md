@@ -6,15 +6,17 @@ Get the latest BBBW VM
 - "vagrant up"
 - provision/setup.sh: add any desired packages / administrative (linux) configurations here
 - Vagrantfile: change any machine settings here
+ 
 ##companionApp
 Companion app source code
-- the entre project will not be stored here, just key files and instructions
+- key source files of our Android App which communicates via bluetooth
+
 ##proofOfConcept
 Code to demonstrate capabilities (proofOfConcept and formalization milestones are relevant)
-- dropBox (syncing)
-- bluetooth (server script)
-- micro-sd (sd card writing)
-- service-creator (debian service creation)
+- dropBox (cloud file-syncing)
+- bluetooth (embedded server script)
+- micro-sd (embedded portable-media writing)
+- service-creator (automated debian service creation)
 - sox-audio (audio creation and compression)
-- wifi (script and instructions to scan networks)
+- wifi (embedded wireless script and instructions for network connection)
 
