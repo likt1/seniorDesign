@@ -4,6 +4,9 @@ import os
 import subprocess
 import re
 
+from subprocess import Popen, PIPE, STDOUT
+from time import sleep
+
 # object to store key network data...
 # todo detect type (wifi, managed, etc.)
 class NetworkItem(object):
@@ -121,26 +124,27 @@ def configureNetwork(log_file, selected_network):
     
     passPhrase = input("please enter your passphrase: ");
     
-    from subprocess import Popen, PIPE, STDOUT
-    p = Popen(['connmanctl'], stdout=log, stdin=PIPE, stderr=log)
-    stdout_data = p.communicate(input=bytes('agent on\n'+'config ' + selected_network.serviceKey + ' ipv4 dhcp\n'+passPhrase+'\n'+'exit\n','UTF-8'))[0]
-    #p.stdin.write('agent on\nconfig ' + selected_network.serviceKey + ' ipv4 dhcp\nconnect ' + selected_network.serviceKey + '\n' + passPhrase + '\nexit\n')
-    #p.stdin.write('agent on\n')
-    #p.stdin.write('config ' + selected_network.serviceKey + ' ipv4 dhcp\n')
-    #p.stdin.write('connect ' + selected_network.serviceKey + '\n');
-    #p.stdin.write(passPhrase+'\n')
-    #p.stdin.write('exit\n')
-
     # start session so we can utilize agent utility
-
-    '''    type = "peap"
-    if "psk" in selected_network.serviceKey:
-        type = "psk"
-    elif "wep" in selected_network.serviceKey:
-        type = "wep"
-    '''
+    p = Popen(['connmanctl'], bufsize=64, stdout=log, stdin=PIPE, stderr=log)
+    p.stdin.write(bytes('agent on\n','utf-8'))
+    p.stdin.flush()
+    sleep(0.25)
+    p.stdin.write(bytes('config ' + selected_network.serviceKey + ' ipv4 dhcp\n','utf-8'))
+    p.stdin.flush()
+    sleep(0.25)
+    p.stdin.write(bytes('connect ' + selected_network.serviceKey + '\n','utf-8'));
+    p.stdin.flush()
+    sleep(0.75)
+    p.stdin.write(bytes(passPhrase+'\n','utf-8'))
+    p.stdin.flush()
+    sleep(0.5)
+    p.stdin.write(bytes('exit\n','utf-8'))
+    p.stdin.flush()
+    sleep(0.5)
+    
     config_content = "[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nPassphrase = <PASSPHRASE>\n"
-    config_file_name = "/var/lib/connman/" + selected_network.ssid + ".config"
+    #config_file_name = "/var/lib/connman/" + selected_network.ssid + ".config"
+    config_file_name = "/var/lib/connman/wifi.config"
     config_file = open(config_file_name,"w")
 
     
