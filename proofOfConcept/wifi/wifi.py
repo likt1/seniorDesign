@@ -9,7 +9,7 @@ from time import sleep
 
 # object to store key network data...
 class NetworkItem(object):
-    def __init__(self, status, ssid, serviceKey, id, security):
+    def __init__(self, id, status, ssid, serviceKey, security):
         self.id = id
         self.status = status
         self.ssid = ssid
@@ -72,15 +72,15 @@ def scanNetworks(log_file):
             continue
 
         # detect security type of scanned networks
-        security = 'unkown'
+        security = 'unknown'
         if "none" in network_item[-1]:
-        	security = 'open'
+            security = 'open'
         elif "wep" in network_item[-1]:
-        	security = 'wep'
+            security = 'wep'
         elif "psk" in network_item[-1]:
-        	security = 'wpa-psk'
+            security = 'wpa-psk'
         elif "ieee8021x" in network_item[-1]:
-        	security = 'peap'
+            security = 'peap'
     
         # fill object accordingly
         if (len(network_item) >= 3):
@@ -127,35 +127,35 @@ def promptNetworks(log_file):
     return selected_network
 
 def configSettings(log_file, ssid, skey):
-	settings_file_name = "/var/lib/connman/" + skey + "/settings"
+    settings_file_name = "/var/lib/connman/" + skey + "/settings"
 
-	if os.path.exists(settings_file_name):
-		config_file_line = "Config.file=" + ssid.lower() + "\n"
-		config_ident_line = "Config.ident=service_" + skey + "\n"
+    if os.path.exists(settings_file_name):
+        config_file_line = "Config.file=" + ssid.lower() + "\n"
+        config_ident_line = "Config.ident=service_" + skey + "\n"
 
-		settings_file = open(settings_file_name,'r')
-		settings_old = settings_file.read()
-		settings_file.close()
-		settings_file = open(settings_file_name,'w')
+        settings_file = open(settings_file_name,'r')
+        settings_old = settings_file.read()
+        settings_file.close()
+        settings_file = open(settings_file_name,'w')
 
-		lines = settings_old.split('\n')
+        lines = settings_old.split('\n')
 
-		for line in lines:
-			if "Config.file" in line:
-				settings_file.write(config_file_line)
-			elif "Config.ident" in line:
-				settings_file.write(config_ident_line)
-			elif line:
-				settings_file.write(line + "\n")
+        for line in lines:
+            if "Config.file" in line:
+                settings_file.write(config_file_line)
+            elif "Config.ident" in line:
+                settings_file.write(config_ident_line)
+            elif line:
+                settings_file.write(line + "\n")
 
-		if "Config.file" not in settings_old:
-			settings_file.write(config_file_line)
-		if "Config.ident" not in settings_old:
-			settings_file.write(config_ident_line)
+        if "Config.file" not in settings_old:
+            settings_file.write(config_file_line)
+        if "Config.ident" not in settings_old:
+            settings_file.write(config_ident_line)
 
-		settings_file.close()
-	else:
-		log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
+        settings_file.close()
+    else:
+        log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
 
 def configureNetwork(log_file, selected_network):
     log_file.close()    
@@ -165,9 +165,9 @@ def configureNetwork(log_file, selected_network):
     networkId = ""
     passPhrase = ""
     if "peap" in selected_network.security:
-    	networkId = input("please enter your network identity (dont care for single_auth networks): ");
+        networkId = input("please enter your network identity (dont care for single_auth networks): ");
     if "open" not in selected_network.security:
-    	passPhrase = input("please enter your passphrase: ");
+        passPhrase = input("please enter your passphrase: ");
     
     # start session so we can utilize agent utility
     p = Popen(['connmanctl'], bufsize=64, stdout=log, stdin=PIPE, stderr=log)
@@ -189,23 +189,23 @@ def configureNetwork(log_file, selected_network):
     
     # create config file to config networks with passphrases
     if "open" not in selected_network.security:
-	    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
-	    config_file = open(config_file_name,"w")
-	    skey = selected_network.serviceKey
-	    config_content = peap_template
-	    if "peap" not in selected_network.security:
-	        config_content = single_auth_template
-	    config_content = config_content.replace("<NETID>",networkId)
-	    config_content = config_content.replace("<PASSPHRASE>",passPhrase)
-	    config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
-	    config_content = config_content.replace("<SSID>",selected_network.ssid)
-	    config_file.write(config_content)
-	    config_file.close()
+        config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
+        config_file = open(config_file_name,"w")
+        skey = selected_network.serviceKey
+        config_content = peap_template
+        if "peap" not in selected_network.security:
+            config_content = single_auth_template
+        config_content = config_content.replace("<NETID>",networkId)
+        config_content = config_content.replace("<PASSPHRASE>",passPhrase)
+        config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
+        config_content = config_content.replace("<SSID>",selected_network.ssid)
+        config_file.write(config_content)
+        config_file.close()
 
     # link config file to connman service
     log.close()
     log_file = open("log","a")
-    configSettings(log_file, selected_network.ssid. selected_network.serviceKey)
+    configSettings(log_file, selected_network.ssid, selected_network.serviceKey)
     log_file.close()
     log = open("log","wb")
 
