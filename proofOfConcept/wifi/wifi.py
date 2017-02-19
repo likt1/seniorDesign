@@ -22,6 +22,10 @@ if(os.path.isfile("log")):
 if(os.path.isfile("networks")):
     os.remove("networks")
 
+peap_template = "[global]\nName = <SSID>\nDescription = wifi.py autogen config PEAP\n\n[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nEAP = peap\nPhase2 = MSCHAPV2\nIdentity = <NETID>\nPassphrase = <PASSPHRASE>\n"
+
+single_auth_template = "[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nPassphrase = <PASSPHRASE>\n"
+
 def setupWifi():
     networks = open("networks","wb")
     log = open("log","wb")
@@ -111,17 +115,10 @@ def promptNetworks(log_file):
     return selected_network
 
 def configureNetwork(log_file, selected_network):
-    # status ssid serviceKey id
-    # this will involve doing the following:
-    #config wifi_****_****_managed_psk ipv4 dhcp
-    #connect wifi_****_****_managed_psk
-    #<enter_passphrase_here>
-    #quit
-    #ping google.com
-
     log_file.close()    
     log = open("log","wb")
     
+    networkId = input("please enter your network identity (dont care for single_auth networks): ");
     passPhrase = input("please enter your passphrase: ");
     
     # start session so we can utilize agent utility
@@ -142,12 +139,26 @@ def configureNetwork(log_file, selected_network):
     p.stdin.flush()
     sleep(0.5)
     
-    config_content = "[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nPassphrase = <PASSPHRASE>\n"
-    #config_file_name = "/var/lib/connman/" + selected_network.ssid + ".config"
-    config_file_name = "/var/lib/connman/wifi.config"
+    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
+    #config_file_name = "/var/lib/connman/wifi.config"
     config_file = open(config_file_name,"w")
 
+    # create config file to config peap
+    skey = selected_network.serviceKey
+    config_content = peap_template
+    if "wep" in skey or "wpa" in skey or "psk" in skey:
+        config_content = single_auth_template
+
+    # link config file to connman service
+    #settings_file_name = "/var/lib/connman/" + selected_network.serviceKey + "/settings"
+    #settings_old = open(settings_file_name,'r').read()
+    #if "Config.file" in settings_old
+    #settings_new = settings_old
     
+    # Config.file=<SSIDLOWER>
+    # Config.ident=service_<SERVICEKEY>
+
+    config_content = config_content.replace("<NETID>",networkId)
     config_content = config_content.replace("<PASSPHRASE>",passPhrase)
     config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
     config_content = config_content.replace("<SSID>",selected_network.ssid)
@@ -168,7 +179,6 @@ def configureNetwork(log_file, selected_network):
 
     log.close()
     log_file = open("log","a")
-
 
 # main...
 setupWifi()
