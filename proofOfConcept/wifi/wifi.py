@@ -8,13 +8,14 @@ from subprocess import Popen, PIPE, STDOUT
 from time import sleep
 
 # object to store key network data...
-# todo detect type (wifi, managed, etc.)
 class NetworkItem(object):
-    def __init__(self, status, ssid, serviceKey, id):
+    def __init__(self, status, ssid, serviceKey, id, security):
+        self.id = id
         self.status = status
         self.ssid = ssid
         self.serviceKey = serviceKey
-        self.id = id
+        self.security = security
+
 
 # start fresh
 if(os.path.isfile("log")):
@@ -22,8 +23,8 @@ if(os.path.isfile("log")):
 if(os.path.isfile("networks")):
     os.remove("networks")
 
+# config file templates to be filled out based on selected network
 peap_template = "[global]\nName = <SSID>\nDescription = wifi.py autogen config PEAP\n\n[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nEAP = peap\nPhase2 = MSCHAPV2\nIdentity = <NETID>\nPassphrase = <PASSPHRASE>\n"
-
 single_auth_template = "[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nPassphrase = <PASSPHRASE>\n"
 
 def setupWifi():
@@ -69,6 +70,17 @@ def scanNetworks(log_file):
         # this script only cares about wifi items...
         if "wifi" not in network_item[-1]:
             continue
+
+        # detect security type of scanned networks
+        security = 'unkown'
+        if "none" in network_item[-1]:
+        	security = 'open'
+        elif "wep" in network_item[-1]:
+        	security = 'wep'
+        elif "psk" in network_item[-1]:
+        	security = 'wpa-psk'
+        elif "ieee8021x" in network_item[-1]:
+        	security = 'peap'
     
         # fill object accordingly
         if (len(network_item) >= 3):
@@ -78,9 +90,9 @@ def scanNetworks(log_file):
                 status = 'connected'
             else:
                 status = 'available'
-            network_items.append(NetworkItem(status,network_item[1],network_item[2],i))
+            network_items.append(NetworkItem(i,status,network_item[1],network_item[2],security))
         elif(len(network_item) >= 2):
-            network_items.append(NetworkItem("not connected", network_item[0], network_item[1],i))
+            network_items.append(NetworkItem(i,"not connected", network_item[0], network_item[1],security))
         else:
             i -= 1
         i += 1
@@ -149,8 +161,13 @@ def configureNetwork(log_file, selected_network):
     log_file.close()    
     log = open("log","ab")
     
-    networkId = input("please enter your network identity (dont care for single_auth networks): ");
-    passPhrase = input("please enter your passphrase: ");
+    # based on selected security, prompt for username / password...
+    networkId = ""
+    passPhrase = ""
+    if "peap" in selected_network.security:
+    	networkId = input("please enter your network identity (dont care for single_auth networks): ");
+    if "open" not in selected_network.security:
+    	passPhrase = input("please enter your passphrase: ");
     
     # start session so we can utilize agent utility
     p = Popen(['connmanctl'], bufsize=64, stdout=log, stdin=PIPE, stderr=log)
@@ -170,19 +187,20 @@ def configureNetwork(log_file, selected_network):
     p.stdin.flush()
     sleep(0.5)
     
-    # create config file to config peap
-    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
-    config_file = open(config_file_name,"w")
-    skey = selected_network.serviceKey
-    config_content = peap_template
-    if "wep" in skey or "wpa" in skey or "psk" in skey:
-        config_content = single_auth_template
-    config_content = config_content.replace("<NETID>",networkId)
-    config_content = config_content.replace("<PASSPHRASE>",passPhrase)
-    config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
-    config_content = config_content.replace("<SSID>",selected_network.ssid)
-    config_file.write(config_content)
-    config_file.close()
+    # create config file to config networks with passphrases
+    if "open" not in selected_network.security:
+	    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
+	    config_file = open(config_file_name,"w")
+	    skey = selected_network.serviceKey
+	    config_content = peap_template
+	    if "peap" not in selected_network.security:
+	        config_content = single_auth_template
+	    config_content = config_content.replace("<NETID>",networkId)
+	    config_content = config_content.replace("<PASSPHRASE>",passPhrase)
+	    config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
+	    config_content = config_content.replace("<SSID>",selected_network.ssid)
+	    config_file.write(config_content)
+	    config_file.close()
 
     # link config file to connman service
     log.close()
@@ -191,6 +209,7 @@ def configureNetwork(log_file, selected_network):
     log_file.close()
     log = open("log","wb")
 
+    # validate it worked / re-attempt connection
     print("rescanning networks...")
     command = ["connmanctl", "scan","wifi"]
     subprocess.call(command,stdout=log,stderr=log)
