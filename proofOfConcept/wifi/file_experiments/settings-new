@@ -1,0 +1,15 @@
+[wifi_506583d9499c_536563757265776972656c657373_managed_ieee8021x]
+Name=Securewireless
+SSID=536563757265776972656c657373
+Frequency=2462
+Favorite=true
+Modified=2017-02-19T15:49:13.184345Z
+IPv4.method=dhcp
+IPv6.method=auto
+IPv6.privacy=disabled
+AutoConnect=true
+Passphrase=<PASSPHRASE>
+IPv4.DHCP.LastAddress=10.52.255.57
+
+Config.file=securewireless
+Config.ident=service_wifi_xxx_xxx_managed_psk

@@ -114,9 +114,40 @@ def promptNetworks(log_file):
         print("invalid input...")
     return selected_network
 
+def configSettings(log_file, ssid, skey):
+	settings_file_name = "/var/lib/connman/" + skey + "/settings"
+
+	if os.path.exists(settings_file_name):
+		config_file_line = "Config.file=" + ssid.lower() + "\n"
+		config_ident_line = "Config.ident=service_" + skey + "\n"
+
+		settings_file = open(settings_file_name,'r')
+		settings_old = settings_file.read()
+		settings_file.close()
+		settings_file = open(settings_file_name,'w')
+
+		lines = settings_old.split('\n')
+
+		for line in lines:
+			if "Config.file" in line:
+				settings_file.write(config_file_line)
+			elif "Config.ident" in line:
+				settings_file.write(config_ident_line)
+			elif line:
+				settings_file.write(line + "\n")
+
+		if "Config.file" not in settings_old:
+			settings_file.write(config_file_line)
+		if "Config.ident" not in settings_old:
+			settings_file.write(config_ident_line)
+
+		settings_file.close()
+	else:
+		log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
+
 def configureNetwork(log_file, selected_network):
     log_file.close()    
-    log = open("log","wb")
+    log = open("log","ab")
     
     networkId = input("please enter your network identity (dont care for single_auth networks): ");
     passPhrase = input("please enter your passphrase: ");
@@ -139,33 +170,26 @@ def configureNetwork(log_file, selected_network):
     p.stdin.flush()
     sleep(0.5)
     
-    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
-    #config_file_name = "/var/lib/connman/wifi.config"
-    config_file = open(config_file_name,"w")
-
     # create config file to config peap
+    config_file_name = "/var/lib/connman/" + selected_network.ssid.lower() + ".config"
+    config_file = open(config_file_name,"w")
     skey = selected_network.serviceKey
     config_content = peap_template
     if "wep" in skey or "wpa" in skey or "psk" in skey:
         config_content = single_auth_template
-
-    # link config file to connman service
-    #settings_file_name = "/var/lib/connman/" + selected_network.serviceKey + "/settings"
-    #settings_old = open(settings_file_name,'r').read()
-    #if "Config.file" in settings_old
-    #settings_new = settings_old
-    
-    # Config.file=<SSIDLOWER>
-    # Config.ident=service_<SERVICEKEY>
-
     config_content = config_content.replace("<NETID>",networkId)
     config_content = config_content.replace("<PASSPHRASE>",passPhrase)
     config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
     config_content = config_content.replace("<SSID>",selected_network.ssid)
-    
     config_file.write(config_content)
-
     config_file.close()
+
+    # link config file to connman service
+    log.close()
+    log_file = open("log","a")
+    configSettings(log_file, selected_network.ssid. selected_network.serviceKey)
+    log_file.close()
+    log = open("log","wb")
 
     print("rescanning networks...")
     command = ["connmanctl", "scan","wifi"]
