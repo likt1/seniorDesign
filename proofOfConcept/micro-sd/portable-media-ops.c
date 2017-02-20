@@ -127,9 +127,6 @@ void usage()
 int write_device(char* file_name, char* to_write, char* device_name, char* mount_loc)
 {
     printf("attempting write to %s\n", file_name);
-    device_mount_check(device_name,mount_loc);
-    printf("writing: %s\n", to_write);
-    /*
     FILE *fptr;
     
     int device_mounted = device_mount_check(device_name, mount_loc);
@@ -148,8 +145,9 @@ int write_device(char* file_name, char* to_write, char* device_name, char* mount
     else
        return -1; // error out if unable to find the device / mount point    
     
+    printf("writing: %s\n", to_write);
     fprintf(fptr,"%s\n", to_write);
-    fclose(fptr);*/
+    fclose(fptr);
     
     return 0;
 }
@@ -157,7 +155,7 @@ int write_device(char* file_name, char* to_write, char* device_name, char* mount
 int device_mount_check(char* dev_name, char* mount_loc)
 {
     printf("checking if %s is mounted\n", mount_loc);
-    /*DIR *directory_struct;
+    DIR *directory_struct;
     struct dirent *dir;
     directory_struct = opendir("/dev/");
     int success = -1;
@@ -174,14 +172,13 @@ int device_mount_check(char* dev_name, char* mount_loc)
         success = mount_device(dev_name, mount_loc);
     else
         printf("device not found, please insert a portable storage device\n");
-    return(success);*/
-    return mount_device(dev_name, mount_loc);
+    return(success);
 }
 
 int mount_device(char* dev_name, char* mount_loc)
 {
     printf("attempting mount of %s to %s\n", dev_name, mount_loc);
-    /*char devLocation[25];
+    char devLocation[25];
     strcpy(devLocation,"/dev/");
     strcat(devLocation,dev_name);
     
@@ -194,18 +191,18 @@ int mount_device(char* dev_name, char* mount_loc)
         return -1;
     } 
     else
-        printf("Mount successful");*/
+        printf("Mount successful\n");
     return 0;
 }
 
 int unmount_device(char* mount_loc)
 {
     printf("attempting umount at %s\n", mount_loc);
-    /*if(umount(mount_loc))
+    if(umount(mount_loc))
     {
         printf("something went wrong while unmounting...\n");
         return -1;
-    }*/
+    }
     return 0;
 }
 
