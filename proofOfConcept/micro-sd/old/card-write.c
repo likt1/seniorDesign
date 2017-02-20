@@ -14,7 +14,7 @@ int device_mount_check(char* dev_name, char* mount_loc);
 int mount_device(char* dev_name, char* mount_loc);
 int unmount_device(char* mount_loc);
 
-int main()
+int main(int argc, char *argv[])
 {
    char sentence[1000];
    FILE *fptr;
