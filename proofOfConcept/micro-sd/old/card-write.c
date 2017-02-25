@@ -4,24 +4,26 @@
 #include <sys/mount.h> // To mount devices
 #include <string.h>  // For string ops...
 
-#define DEV_NAME "mmcblk0p1"
-#define MOUNT_LOC "/media/store/"
-#define FILE_NAME "sd-card-write-test.txt"
+#define USD_DEV_NAME "mmcblk0p1"
+#define USB_DEV_NAME "sda1"
+#define USD_MNT_LOC "/media/store/sd-card/"
+#define USB_MNT_LOC "/media/store/usb-drive/"
+#define FILE_NAME "storage-write-test.txt"
 
-int device_mount_check();
-int mount_device();
-int unmount_device();
+int device_mount_check(char* dev_name, char* mount_loc);
+int mount_device(char* dev_name, char* mount_loc);
+int unmount_device(char* mount_loc);
 
-int main()
+int main(int argc, char *argv[])
 {
    char sentence[1000];
    FILE *fptr;
 
-   int device_mounted = device_mount_check();
+   int device_mounted = device_mount_check(USB_DEV_NAME, USB_MNT_LOC);
    if(device_mounted == 0)
    {
        char fileLocation[50];
-       strcpy(fileLocation,MOUNT_LOC);
+       strcpy(fileLocation,USB_MNT_LOC);
        strcat(fileLocation,FILE_NAME);
        fptr = fopen(fileLocation, "w");
        if(fptr == NULL)
@@ -39,12 +41,12 @@ int main()
    fprintf(fptr,"%s\n", sentence);
    fclose(fptr);
 
-   unmount_device();
+   unmount_device(USB_MNT_LOC);
 
    return 0;
 }
 
-int device_mount_check()
+int device_mount_check(char* dev_name, char* mount_loc)
 {
 	DIR *directory_struct;
 	struct dirent *dir;
@@ -54,28 +56,28 @@ int device_mount_check()
 	{
 		while((dir = readdir(directory_struct)) != NULL)
 		{
-			if(strstr(dir->d_name,DEV_NAME))
+			if(strstr(dir->d_name,dev_name))
 				success = 0;
     	}
 		closedir(directory_struct);
 	}
 	if(success == 0)
-		success = mount_device();
+		success = mount_device(dev_name, mount_loc);
 	else
-		printf("device not found, please insert a micro-sd card\n");
+		printf("device not found, please insert a portable storage device\n");
 	return(success);
 }
 
-int mount_device()
+int mount_device(char* dev_name, char* mount_loc)
 {
 	char devLocation[25];
 	strcpy(devLocation,"/dev/");
-	strcat(devLocation,DEV_NAME);
+	strcat(devLocation,dev_name);
 	
 	// check if mounted, otherwise attempt mount
 	if(system("mount | grep \"store\"") == 0)
 		printf("device already mounted, good to write...\n");
-	else if(mount(devLocation, MOUNT_LOC, "vfat", MS_NOATIME, NULL)) 
+	else if(mount(devLocation, mount_loc, "vfat", MS_NOATIME, NULL)) 
 	{
 		printf("something went wrong while mounting...\n");
 		return -1;
@@ -85,9 +87,9 @@ int mount_device()
 	return 0;
 }
 
-int unmount_device()
+int unmount_device(char* mount_loc)
 {
-	if(umount(MOUNT_LOC))
+	if(umount(mount_loc))
 	{
 		printf("something went wrong while unmounting...\n");
 		return -1;
