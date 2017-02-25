@@ -1,3 +1,4 @@
 VM/.vagrant/*
 **/*log
 **/networks
+**/__pycache__/*
