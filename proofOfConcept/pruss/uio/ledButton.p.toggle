@@ -1,0 +1,15 @@
+// PRU-ICSS program to flash a LED on P9_27 (pru0_pru_r30_5) until a button
+// that is connected to P9_28 (pru0_pru_r31_3 is pressed.
+
+.origin 0						// start of program in PRU memory
+.entrypoint START				// program entry point
+
+START:
+	SET		r30.t5				// set the output pin (LED on)
+
+LEDOFF:
+	CLR		r30.t5				// clear the output bin (LED off)
+
+END:
+	MOV		r31.b0, 19 + 16
+	HALT						// halt program
