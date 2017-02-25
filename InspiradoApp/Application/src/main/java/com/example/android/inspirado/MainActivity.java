@@ -2,6 +2,8 @@ package com.example.android.inspirado;
 
 import android.app.ActionBar;
 import android.app.FragmentTransaction;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -14,7 +16,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Locale;
 
@@ -249,12 +253,32 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
         public WifiFragment() {
         }
 
+        Intent intent;
+
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.wifi, container, false);
+
+            Button button = (Button) rootView.findViewById(R.id.button_send);
+
+//            button.setOnClickListener(new View.OnClickListener(){
+//                @Override
+//                public void onClick(View v){
+////                    Context context = getActivity().getApplicationContext();
+////                    CharSequence text = "Hello toast!";
+////                    int duration = Toast.LENGTH_SHORT;
+////
+////                    Toast toast = Toast.makeText(context, text, duration);
+////                    toast.show();
+//                    Toast.makeText(getActivity(), "Hello World", Toast.LENGTH_LONG).show();
+//                }
+//            }
+//
+//            );
             return rootView;
         }
+
     }
 
     /**
@@ -296,7 +320,5 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
             return rootView;
         }
     }
-
-
 
 }

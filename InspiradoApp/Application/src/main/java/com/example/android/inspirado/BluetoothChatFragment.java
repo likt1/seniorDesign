@@ -20,6 +20,7 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -143,7 +144,9 @@ public class BluetoothChatFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_bluetooth_chat, container, false);
+
+        final View rootView = inflater.inflate(R.layout.fragment_bluetooth_chat, container, false);
+        return rootView;
     }
 
     @Override
@@ -151,6 +154,43 @@ public class BluetoothChatFragment extends Fragment {
         mConversationView = (ListView) view.findViewById(R.id.in);
         mOutEditText = (EditText) view.findViewById(R.id.edit_text_out);
         mSendButton = (Button) view.findViewById(R.id.button_send);
+        final EditText mEditNetwork = (EditText) getView().findViewById(R.id.editNetwork);
+        final EditText mEditPassword = (EditText) getView().findViewById(R.id.editPassword);
+
+        final Button mTestButton = (Button) getView().findViewById(R.id.button_test);
+        mTestButton.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                sendMessage("HEINEKEN? FUCK THAT SHIT");
+            }
+        });
+
+        final Button mButtonConnect = (Button) getView().findViewById(R.id.button_connect);
+        mButtonConnect.setOnClickListener(new View.OnClickListener(){
+            public void onClick(View v){
+                View view = getView();
+                if(null != view) {
+                    String network = mEditNetwork.getText().toString();
+                    String password = mEditPassword.getText().toString();
+
+                    //TODO: Look into JSON
+
+                    sendMessage(network+password);
+                }
+            }
+        });
+
+    }
+
+    class wifi{
+        private String network;
+        private String password;
+
+        public wifi(){}
+
+        public wifi(String network, String password){
+            this.network = network;
+            this.password = password;
+        }
     }
 
     /**
@@ -204,7 +244,7 @@ public class BluetoothChatFragment extends Fragment {
      *
      * @param message A string of text to send.
      */
-    private void sendMessage(String message) {
+    public void sendMessage(String message) {
         // Check that we're actually connected before trying anything
         if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
             Toast.makeText(getActivity(), R.string.not_connected, Toast.LENGTH_SHORT).show();
@@ -318,6 +358,12 @@ public class BluetoothChatFragment extends Fragment {
                 case Constants.MESSAGE_TOAST:
                     if (null != activity) {
                         Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                    break;
+                default:
+                    if (null != activity) {
+                        Toast.makeText(activity, "Something Happened",
                                 Toast.LENGTH_SHORT).show();
                     }
                     break;

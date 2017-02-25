@@ -4,31 +4,43 @@
     android:layout_height="match_parent">
 
     <TextView
-        android:text="Network"
+        android:text="Wifi Config"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/tvNetwork" />
+        android:layout_height="wrap_content" />
 
-    <EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textPersonName"
-        android:text=""
-        android:ems="10"
-        android:id="@+id/editNetwork" />
+    <!--<TextView-->
+        <!--android:text="Network"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/tvNetwork" />-->
 
-    <TextView
-        android:text="Password"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/tvPassword" />
+    <!--<EditText-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:inputType="textPersonName"-->
+        <!--android:text=""-->
+        <!--android:ems="10"-->
+        <!--android:id="@+id/editNetwork" />-->
 
-    <EditText
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:inputType="textPersonName"
-        android:text=""
-        android:ems="10"
-        android:id="@+id/editPassword" />
+    <!--<TextView-->
+        <!--android:text="Password"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/tvPassword" />-->
+
+    <!--<EditText-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:inputType="textPersonName"-->
+        <!--android:text=""-->
+        <!--android:ems="10"-->
+        <!--android:id="@+id/editPassword" />-->
+
+    <!--<Button-->
+        <!--android:text="Connect"-->
+        <!--android:layout_width="match_parent"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:id="@+id/buttonConnect" />-->
+
 
 </LinearLayout>

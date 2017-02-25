@@ -159,6 +159,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
         print('Usage: {0} <local directory> <dropbox directory>'.format(sys.argv[0]))
         sys.exit(-1)
-    localDir = str(sys.argv[1]);
+    localDir = str(sys.argv[1])
     cloudDir = str(sys.argv[2])
+
     main(localDir,cloudDir)
