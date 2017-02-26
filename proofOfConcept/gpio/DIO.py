@@ -1,8 +1,8 @@
 prevRotaryReading1 = -500000 # arbitrary init val
 prevRotaryReading2 = -500000
 prevSwitchReading = -1
-settingsTime = [active, 30s, 1m, 1m30s, 2m, 2m30s, 3m]
-settingsType = [wav, mp3, flac, ogg]
+settingsTime = ["active", "30s", "1m", "1m30s", "2m", "2m30s", "3m"]
+settingsType = ["wav", "mp3", "flac", "ogg"]
 idxTime = 0
 idxType = 0
 count = 0
