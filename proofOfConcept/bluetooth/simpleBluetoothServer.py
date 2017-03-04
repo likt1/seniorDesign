@@ -33,7 +33,7 @@ def listNetworks():
     # Goal: Run the wifi script to scan for networks
     # Script returns list of network objects
     # Serialize into json string, return the json string
-    networks = '[{"name":"SecureWireless"},{"name":"ThyNeighborsWifi"}]'
+    networks = '{"type":"listNetworks","networks":[{"name":"SecureWireless"},{"name":"ThyNeighborsWifi"}]}'  #Hardcoded example
     return networks
 
 def defaultReply():
@@ -46,6 +46,7 @@ while True:
         print("Accepted connection from ",address)
         greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
         client_sock.send(greeting)
+        
         while True:
             data = client_sock.recv(1024)
             data = data.decode('UTF-8')

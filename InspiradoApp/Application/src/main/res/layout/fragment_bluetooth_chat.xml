@@ -25,13 +25,12 @@
         android:layout_height="wrap_content"
         android:id="@+id/tvNetwork" />
 
-    <EditText
+    <Spinner
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:inputType="textPersonName"
         android:text=""
         android:ems="10"
-        android:id="@+id/editNetwork" />
+        android:id="@+id/spinNetwork" />
 
     <TextView
         android:text="Password"
@@ -42,7 +41,7 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:inputType="textPersonName"
+        android:inputType="textPassword"
         android:text=""
         android:ems="10"
         android:id="@+id/editPassword" />

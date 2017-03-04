@@ -40,8 +40,25 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.security.Key;
+import java.util.ArrayList;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.spec.SecretKeySpec;
+
+import se.simbio.encryption.Encryption;
+
 
 //import com.example.android.common.logger.Log;
 
@@ -86,6 +103,11 @@ public class BluetoothChatFragment extends Fragment {
      * Member object for the chat services
      */
     private BluetoothChatService mChatService = null;
+
+    /*
+    * ArrayAdapter to populate available networks
+    * */
+    String[] network = {"SecureWireless","PrettyFlyForAWifi"};
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -154,13 +176,14 @@ public class BluetoothChatFragment extends Fragment {
         mConversationView = (ListView) view.findViewById(R.id.in);
         mOutEditText = (EditText) view.findViewById(R.id.edit_text_out);
         mSendButton = (Button) view.findViewById(R.id.button_send);
-        final EditText mEditNetwork = (EditText) getView().findViewById(R.id.editNetwork);
+
+        final Spinner mSpinner = (Spinner) getView().findViewById(R.id.spinNetwork);
         final EditText mEditPassword = (EditText) getView().findViewById(R.id.editPassword);
 
         final Button mTestButton = (Button) getView().findViewById(R.id.button_test);
         mTestButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v){
-                sendMessage("HEINEKEN? FUCK THAT SHIT");
+                sendMessage("HEINEKEN?");
             }
         });
 
@@ -169,27 +192,59 @@ public class BluetoothChatFragment extends Fragment {
             public void onClick(View v){
                 View view = getView();
                 if(null != view) {
-                    String network = mEditNetwork.getText().toString();
+                    String ssid = mSpinner.getSelectedItem().toString();
                     String password = mEditPassword.getText().toString();
+                    password = encrypt(password);
 
-                    //TODO: Look into JSON
+                    Gson gson = new Gson();
+                    Network network = new Network(ssid, password);
+                    String json = gson.toJson(network);
 
-                    sendMessage(network+password);
+                    sendMessage(json);
                 }
             }
         });
 
+        ArrayAdapter<String> adapterNetwork = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_spinner_dropdown_item, network);
+        adapterNetwork.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mSpinner.setAdapter(adapterNetwork);
+
     }
 
-    class wifi{
-        private String network;
+    String encrypt(String text){
+        String key ="YourKey";
+        String salt = "YourSalt";
+        byte[] iv = new byte[16];
+        Encryption encryption = Encryption.getDefault(key,salt,iv);
+        String encrpyted = encryption.encryptOrNull(text);
+        return encrpyted;
+    }
+
+    class Network{
+        private String ssid;
         private String password;
 
-        public wifi(){}
+        public Network(){}
 
-        public wifi(String network, String password){
-            this.network = network;
+        public Network(String ssid, String password){
+            this.ssid = ssid;
             this.password = password;
+        }
+
+        public void setSsid(String ssid){
+            this.ssid = ssid;
+        }
+
+    }
+
+    class AvailableNetworks{
+        private ArrayList<Network> networks = new ArrayList<Network>();
+
+        public AvailableNetworks(String[] network_ssids){
+            Network tmp = new Network(network_ssids[0], "");
+            for(int i = 0; i < network_ssids.length; i++)
+                tmp.setSsid(network_ssids[i]);
+                this.networks.add(tmp);
         }
     }
 
@@ -345,6 +400,42 @@ public class BluetoothChatFragment extends Fragment {
                     byte[] readBuf = (byte[]) msg.obj;
                     // construct a string from the valid bytes in the buffer
                     String readMessage = new String(readBuf, 0, msg.arg1);
+
+                    //Parse message
+                    try{
+                        JsonParser parser = new JsonParser();
+                        JsonObject o = parser.parse(readMessage).getAsJsonObject();
+
+                        Context context = getActivity().getApplicationContext();
+                        int duration = Toast.LENGTH_SHORT;
+                        String type = o.get("type").getAsString();
+                        Toast toast = Toast.makeText(context, type, duration);
+                        toast.show();
+
+                        switch(type){
+                            case "listNetworks":
+                                JsonArray array = o.get("networks").getAsJsonArray();
+                                ArrayList<String> networks = new ArrayList<String>();
+                                for(JsonElement net : array){
+                                    networks.add(net.getAsJsonObject().get("name").getAsString());
+                                    toast = Toast.makeText(context, net.getAsJsonObject().get("name").getAsString(), duration);
+                                    toast.show();
+                                }
+                                //TODO notifyDataSetChanged somehow
+
+                                break;
+                            default:
+                                break;
+                        }
+
+                    }catch(Exception e){
+                        //Not valid JSON
+                        Context context = getActivity().getApplicationContext();
+                        int duration = Toast.LENGTH_SHORT;
+                        Toast toast = Toast.makeText(context, "Not valid Json", duration);
+                        toast.show();
+                    }
+
                     mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
                     break;
                 case Constants.MESSAGE_DEVICE_NAME:
