@@ -6,17 +6,22 @@
 
 #define PRU_NUM 0				// using PRU0 for examples
 #define SAMPLE_RATE 44100
+#define BUFFER_LENGTH SAMPLE_RATE
 #define CONFIG_SIZE 10
 
 typedef int bool;
 #define true 1
 #define false 0
 
-bool run = true, noop = false, save = false;
+bool run = true;
+bool noop = false;
+bool save = false;
 pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
-int next = 0, start = -1, bufLength = SAMPLE_RATE, max = bufLength;
-int sampleBuffer[bufLength];
+int next = 0;
+int start = -1;
+int max = BUFFER_LENGTH;
+int sampleBuffer[BUFFER_LENGTH];
 
 void *pruThread (void *var) {
   // INIT
@@ -60,9 +65,10 @@ void *pruThread (void *var) {
     // Write to buffer
     pthread_mutex_lock(&pruWrite);
     if (!noop) {
-      for (int i = 0; i < 0; i++) { // For each sample in pru buffer
+      int i;
+      for (i = 0; i < 0; i++) { // For each sample in pru buffer
         int sample = 0; // Get sample from pru buffer TODO HERE
-        sampleBuffer[next] = sample;
+        sampleBuffer[next] = sample * 16;
         next++;
         if (next == max) {
           next = 0;
@@ -128,13 +134,20 @@ void main (void) {
   // ===============================
   while (running) {
     running = false; // DEBUG
+    save = true; // DEBUG
+    int i;
+    for (i = 0; i < BUFFER_LENGTH; i++) {
+      sampleBuffer[i] = 4095;
+    }
     
     // Read config file and set values
     // Init file read vars
     FILE *file;
-    file = fopen("~/conf/DIO.config", "r");
+    file = fopen("/root/conf/DIO.config", "r");
     char strBuf[40];
+    char* lbl;
     char* val;
+    const char delim[2] = ":";
     
     // Init config file val vars
     bool newFootSwitch = false;
@@ -142,23 +155,29 @@ void main (void) {
     char newTimeRotary[CONFIG_SIZE] = "\0";
     
     if (file) {
-      while (!fscanf(file, "%s", strBuf) == EOF) {
-        val = strtok(strBuf, ":"); // Start of value
-        
-        // now strBuf has first value (: is now \0) and val has second value
-        if (strcmp(strBuf, "CompRotary") == 0) {
+      printf("Config file detected...\n");
+      while (!(fscanf(file, "%s", strBuf) == EOF)) {
+        printf("entering loop: %s\n", strBuf);
+        lbl = strtok(strBuf, delim); // Start of label
+        val = strtok(NULL, delim); // Value
+
+        printf("lbl: %s val: %s\n", lbl, val);
+        if (strcmp(lbl, "CompRotary") == 0) {
           strncpy(compRotary, val, CONFIG_SIZE);
         }
-        else if (strcmp(strBuf, "TimeRotary") == 0) {
+        else if (strcmp(lbl, "TimeRotary") == 0) {
           strncpy(newTimeRotary, val, CONFIG_SIZE);
         }
-        else if (strcmp(strBuf, "Footswitch") == 0) {
+        else if (strcmp(lbl, "Footswitch") == 0) {
           if (strcmp(val, "True") == 0) {
             newFootSwitch = true;
           }
         }
       }
       fclose(file);
+      printf("%s\n", compRotary);
+      printf("%s\n", newTimeRotary);
+      printf("%d\n", newFootSwitch);
     }
     
     // Block write thread to check for save switching?
@@ -188,46 +207,52 @@ void main (void) {
     //pthread_mutex_lock(&pruWrite);
     if (save) {
       // Open file
-      file = fopen("~/testOut.raw", "wb");
+      file = fopen("/root/testOut.raw", "wb");
+      printf("saving\n");
+      if (file) {
+        // Set write head start
+        if (start == -1) { // if passive get prev
+          if (strcmp(newTimeRotary, "30s") == 0) {
+            start = next - 30*SAMPLE_RATE;
+          }
+          else if (strcmp(newTimeRotary, "1m") == 0) {
+            start = next - 60*SAMPLE_RATE;
+          }
+          else if (strcmp(newTimeRotary, "1m30s") == 0) {
+            start = next - 90*SAMPLE_RATE;
+          }
+          else if (strcmp(newTimeRotary, "2m") == 0) {
+            start = next - 120*SAMPLE_RATE;
+          }
+          else if (strcmp(newTimeRotary, "2m30s") == 0) {
+            start = next - 150*SAMPLE_RATE;
+          }
+          //else { // full 3 min
+          if (start < 0) { // DEBUG 1 MIN ONLY
+            start = next;
+          }
+        }
       
-      // Set write head start
-      if (start == -1) { // if passive get prev
-        if (strcmp(newTimeRotary, "30s") == 0) {
-          start = next - 30*SAMPLE_RATE;
-        }
-        else if (strcmp(newTimeRotary, "1m") == 0) {
-          start = next - 60*SAMPLE_RATE;
-        }
-        else if (strcmp(newTimeRotary, "1m30s") == 0) {
-          start = next - 90*SAMPLE_RATE;
-        }
-        else if (strcmp(newTimeRotary, "2m") == 0) {
-          start = next - 120*SAMPLE_RATE;
-        }
-        else if (strcmp(newTimeRotary, "2m30s") == 0) {
-          start = next - 150*SAMPLE_RATE;
-        }
-        else { // full 3 min
-          start = next;
-        }
+        // Write until we meet next (end)
+        do {
+          // write to file TODO
+          fwrite(&sampleBuffer[start], 2, 1, file); // one by one, find out a way to save all
+          //printf("%d\n%d\n", start, &sampleBuffer[start]);
+          start++;
+          if (start == max) {
+            start = 0;
+          }
+        } while (start != next);
+      
+        // Reset
+        fclose(file);
+        noop = false;
+        save = false;
+        start = -1;
       }
-      
-      // Write until we meet next (end)
-      do {
-        // write to file TODO
-        // fwrite(&sampleBuffer[start], 16, 1, file); // one by one, find out a way to save all
-        printf("%d\n", sampleBuffer[start])
-        start++;
-        if (start == max) {
-          start == 0;
-        }
-      } while (start != next)
-      
-      // Reset
-      fclose(file);
-      noop = false;
-      save = false;
-      start = -1;
+      else {
+        printf("Could not open file for write\n");
+      }
     }
     pthread_mutex_unlock(&pruWrite);
     
@@ -242,10 +267,10 @@ void main (void) {
   pthread_mutex_unlock(&stop);
   
   // Wait for thread to end
-  pthread_join(threadID, NULL);
+  //pthread_join(threadID, NULL);
   
   // Cleanup
   pthread_mutex_destroy(&stop);
   pthread_mutex_destroy(&pruWrite);
-  printf("Circular Buffer program end");
+  printf("Circular Buffer program end\n");
 }
