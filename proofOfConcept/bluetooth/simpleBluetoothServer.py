@@ -1,4 +1,5 @@
 import bluetooth
+import json
 
 server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
@@ -19,21 +20,23 @@ ServiceKey          [string] <- specific to conmanctl
 ConnectionStatus    [string]
 """
 
-def handle_command(cmd):
-    switch={"ListWifi":list_networks,"default_value":default_reply}
+def handleCommand(cmd):
+    switch={"ListWifi":listNetworks,"default_value":defaultReply}
     try:
         msg = switch[cmd]()
     except KeyError:
-        print("Send default")
         msg = switch["default_value"]()
 
     client_sock.send(msg.encode('utf-8'))
       
-def list_networks():
-    #Hardcoded for now
-    return "SecureWireless,FBISurveillanceVan,PrettyFlyForAWiFi"
+def listNetworks():
+    # Goal: Run the wifi script to scan for networks
+    # Script returns list of network objects
+    # Serialize into json string, return the json string
+    networks = '[{"name":"SecureWireless"},{"name":"ThyNeighborsWifi"}]'
+    return networks
 
-def default_reply():
+def defaultReply():
     return "Not a valid command"
 
 while True:
@@ -41,13 +44,19 @@ while True:
     client_sock,address = server_sock.accept()
     try: 
         print("Accepted connection from ",address)
-        greeting = b"\x41\x43\x4B"
+        greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
         client_sock.send(greeting)
         while True:
             data = client_sock.recv(1024)
-            print("received [%s]" % data.decode('UTF-8'))
-            if data:               
-                message = handle_command(data.decode('utf-8'))
+            data = data.decode('UTF-8')
+            print("received [%s]" % data)
+            if data:
+                try:
+                    test = json.loads(data)
+                    print(test['network']) 
+                except:
+                    pass
+                message = handleCommand(data)
             else:
                 break
     except Exception as e:
