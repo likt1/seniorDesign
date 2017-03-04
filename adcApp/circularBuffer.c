@@ -3,8 +3,10 @@
 #include <pthread.h>
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
+
 #define PRU_NUM 0				// using PRU0 for examples
 #define SAMPLE_RATE 44100
+#define CONFIG_SIZE 10
 
 typedef int bool;
 #define true 1
@@ -101,7 +103,7 @@ void main (void) {
   // ===============================
   bool running = true;
   bool footSwitch = false; // TODO set defaults
-  char timeRotary[6] = "active";
+  char timeRotary[CONFIG_SIZE] = "active";
   
   // Init mutex
   if (pthread_mutex_init(&stop, NULL) != 0) {
@@ -114,27 +116,50 @@ void main (void) {
   }
   
   // Init PRU
+  /*
   pthread_t threadID;
   if (pthread_create(&threadID, NULL, pruThread, NULL) != 0) {
     printf("Failed to init thread");
   }
+  */
   // ===============================
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
   while (running) {
     running = false; // DEBUG
-    // Read config file and set values TODO
     
+    // Read config file and set values
+    // Init file read vars
     FILE *file;
+    file = fopen("~/conf/DIO.config", "r");
+    char strBuf[40];
+    char* val;
     
-    file = fopen("TODO", "r");
-    char strBuf[30];
-    
+    // Init config file val vars
     bool newFootSwitch = false;
-    char compRotary[5];
-    char newTimeRotary[6];
-    fclose(file);
+    char compRotary[CONFIG_SIZE] = "\0";
+    char newTimeRotary[CONFIG_SIZE] = "\0";
+    
+    if (file) {
+      while (!fscanf(file, "%s", strBuf) == EOF) {
+        val = strtok(strBuf, ":"); // Start of value
+        
+        // now strBuf has first value (: is now \0) and val has second value
+        if (strcmp(strBuf, "CompRotary") == 0) {
+          strncpy(compRotary, val, CONFIG_SIZE);
+        }
+        else if (strcmp(strBuf, "TimeRotary") == 0) {
+          strncpy(newTimeRotary, val, CONFIG_SIZE);
+        }
+        else if (strcmp(strBuf, "Footswitch") == 0) {
+          if (strcmp(val, "True") == 0) {
+            newFootSwitch = true;
+          }
+        }
+      }
+      fclose(file);
+    }
     
     // Block write thread to check for save switching?
     pthread_mutex_lock(&pruWrite);
@@ -142,7 +167,7 @@ void main (void) {
     // Handle toggle of footswitch
     if (newFootSwitch != footSwitch) {
       //pthread_mutex_lock(&pruWrite);
-      if (start = -1 && strcmp(timeRotary, "active")) { // If we are active and we are not started 
+      if (start = -1 && strcmp(newTimeRotary, "active")) { // If we are active and we are not started 
         start = next; // start active
       }
       else { // save buffer
@@ -152,10 +177,10 @@ void main (void) {
     }
     
     // Handle switching from active to retroactive if we are running
-    // Currently we save the active recording
     if (start > 0 && strcmp(newTimeRotary, timeRotary) != 0) {
       //pthread_mutex_lock(&pruWrite);
-      save = true;
+      //save = true; // saves sample
+      start = -1; // stops active recording
       //pthread_mutex_unlock(&pruWrite);
     }
     
@@ -163,26 +188,26 @@ void main (void) {
     //pthread_mutex_lock(&pruWrite);
     if (save) {
       // Open file
-      file = fopen("~/testOut.raw", "w");
+      file = fopen("~/testOut.raw", "wb");
       
       // Set write head start
-      if (start == -1) {
-        if (strcmp(newTimeRotary, "30sec") == 0) {
+      if (start == -1) { // if passive get prev
+        if (strcmp(newTimeRotary, "30s") == 0) {
           start = next - 30*SAMPLE_RATE;
         }
-        else if (strcmp(newTimeRotary, "1min") == 0) {
+        else if (strcmp(newTimeRotary, "1m") == 0) {
           start = next - 60*SAMPLE_RATE;
         }
-        else if (strcmp(newTimeRotary, "1min30sec") == 0) {
+        else if (strcmp(newTimeRotary, "1m30s") == 0) {
           start = next - 90*SAMPLE_RATE;
         }
-        else if (strcmp(newTimeRotary, "2min") == 0) {
+        else if (strcmp(newTimeRotary, "2m") == 0) {
           start = next - 120*SAMPLE_RATE;
         }
-        else if (strcmp(newTimeRotary, "2min30") == 0) {
+        else if (strcmp(newTimeRotary, "2m30s") == 0) {
           start = next - 150*SAMPLE_RATE;
         }
-        else {
+        else { // full 3 min
           start = next;
         }
       }
@@ -190,7 +215,8 @@ void main (void) {
       // Write until we meet next (end)
       do {
         // write to file TODO
-        // fwrite
+        // fwrite(&sampleBuffer[start], 16, 1, file); // one by one, find out a way to save all
+        printf("%d\n", sampleBuffer[start])
         start++;
         if (start == max) {
           start == 0;
@@ -206,6 +232,7 @@ void main (void) {
     pthread_mutex_unlock(&pruWrite);
     
     footSwitch = newFootSwitch;
+    strncpy(timeRotary, newTimeRotary, CONFIG_SIZE);
   }
   // ===============================
   
