@@ -177,7 +177,7 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     p.stdin.write(bytes('agent on\n','utf-8'))
     p.stdin.flush()
     sleep(0.25)
-    p.stdin.writ    e(bytes('config ' + selected_network.serviceKey + ' ipv4 dhcp\n','utf-8'))
+    p.stdin.write(bytes('config ' + selected_network.serviceKey + ' ipv4 dhcp\n','utf-8'))
     p.stdin.flush()
     sleep(0.25)
     p.stdin.write(bytes('connect ' + selected_network.serviceKey + '\n','utf-8'));
