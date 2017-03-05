@@ -105,9 +105,13 @@ def showNetworks(log_file, network_items):
         print("(" + str(item.id) + ") " + item.ssid + " - " + item.status)
     print("")
 
-def promptNetworks(log_file):
-    selection = input("please select a network you wish to connect to: ");
-    selected_network = ""
+def promptNetworks(log_file, selected_network_id=-1):
+    selection = ""
+    if selected_network_id >= 0:
+        selection = str(selected_network_id)
+    else: 
+        selection = input("please select a network you wish to connect to: ");
+        selected_network = ""
     success = False
 
     if(selection.isdigit()):
@@ -157,24 +161,23 @@ def configSettings(log_file, ssid, skey):
     else:
         log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
 
-def configureNetwork(log_file, selected_network):
+def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     log_file.close()    
     log = open("log","ab")
     
-    # based on selected security, prompt for username / password...
-    networkId = ""
-    passPhrase = ""
-    if "peap" in selected_network.security:
-        networkId = input("please enter your network identity (dont care for single_auth networks): ");
-    if "open" not in selected_network.security:
-        passPhrase = input("please enter your passphrase: ");
+    # based on selected security, (local only) prompt for username / password...
+    if not passphrase and not network_id:
+        if "peap" in selected_network.security:
+            networkId = input("please enter your network identity (dont care for single_auth networks): ");
+        if "open" not in selected_network.security:
+            passPhrase = input("please enter your passphrase: ");
     
     # start session so we can utilize agent utility
     p = Popen(['connmanctl'], bufsize=64, stdout=log, stdin=PIPE, stderr=log)
     p.stdin.write(bytes('agent on\n','utf-8'))
     p.stdin.flush()
     sleep(0.25)
-    p.stdin.write(bytes('config ' + selected_network.serviceKey + ' ipv4 dhcp\n','utf-8'))
+    p.stdin.writ    e(bytes('config ' + selected_network.serviceKey + ' ipv4 dhcp\n','utf-8'))
     p.stdin.flush()
     sleep(0.25)
     p.stdin.write(bytes('connect ' + selected_network.serviceKey + '\n','utf-8'));
