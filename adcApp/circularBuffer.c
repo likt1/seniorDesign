@@ -4,12 +4,12 @@
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
-#define PRU_NUM 0				// using PRU0 for examples
-#define SAMPLE_RATE 44100
-#define BUFFER_LENGTH SAMPLE_RATE
-#define CONFIG_SIZE 10
+#define PRU_NUM 0 // Using PRU0
+#define SAMPLE_RATE 44100 // Set sample rate
+#define BUFFER_SIZE SAMPLE_RATE // DEBUG current buffer length is 1 sec
+#define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
 
-typedef int bool;
+typedef int bool; // Define bool
 #define true 1
 #define false 0
 
@@ -20,39 +20,38 @@ pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
-int max = BUFFER_LENGTH;
-int sampleBuffer[BUFFER_LENGTH];
+int sampleBuffer[BUFFER_SIZE];
 
 void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active");
-	int r;
+  int r;
   
   // Allocate and init mem
-	r = prussdrv_init();
-	if (r != 0) {
-		printf("Failed to init prussdrv driver\n");
-		return NULL;
-	}
-	r = prussdrv_open(PRU_EVTOUT_0);
-	if (r != 0) {
-		printf("Failed to open PRU %d\nerror:%d\n", PRU_NUM, r);
-		prussdrv_exit();
-		return NULL;
-	}
+  r = prussdrv_init();
+  if (r != 0) {
+    printf("Failed to init prussdrv driver\n");
+    return NULL;
+  }
+  r = prussdrv_open(PRU_NUM);
+  if (r != 0) {
+    printf("Failed to open PRU %d\nerror:%d\n", PRU_NUM, r);
+    prussdrv_exit();
+    return NULL;
+  }
 
-	// Map PRU's interrupts
+  // Map PRU's interrupts
   tpruss_intc_initdata pruss_intc_initdata = PRUSS_INTC_INITDATA;
-	r = prussdrv_pruintc_init(&pruss_intc_initdata);
-	if (r != 0) {
-		printf("Failed to init interrupts\n");
-		prussdrv_exit();
-		return NULL;
-	}
+  r = prussdrv_pruintc_init(&pruss_intc_initdata);
+  if (r != 0) {
+    printf("Failed to init interrupts\n");
+    prussdrv_exit();
+    return NULL;
+  }
 
-	// Load and execute the PRU program on PRU
-	prussdrv_exec_program(PRU_NUM, "ledButton.bin");
+  // Load and execute the PRU program on PRU
+  //prussdrv_exec_program(PRU_NUM, "adcSample.bin"); DEBUG let's not do this right now
   // ===============================
 
   // MAIN PRU LOOP
@@ -61,6 +60,7 @@ void *pruThread (void *var) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, 0);
     
     // Write to buffer
     pthread_mutex_lock(&pruWrite);
@@ -70,7 +70,7 @@ void *pruThread (void *var) {
         int sample = 0; // Get sample from pru buffer TODO HERE
         sampleBuffer[next] = sample * 16;
         next++;
-        if (next == max) {
+        if (next == BUFFER_SIZE) {
           next = 0;
         }
         if (next == start) {
@@ -90,25 +90,25 @@ void *pruThread (void *var) {
     pthread_mutex_unlock(&stop);
     
     // Continue PRU sampling TODO
-    // prussdrv_pru_clear_event?
+    prussdrv_pru_send_event(PRU_EVTOUT_0);
   }
   // ===============================
   
-	// Disable PRU and close memory mappings
-	prussdrv_pru_disable(PRU_NUM);
-	prussdrv_exit();
+  // Disable PRU and close memory mappings
+  prussdrv_pru_disable(PRU_NUM);
+  prussdrv_exit();
   
   printf("pru Thread stopped");
   return NULL;
 }
 
 void main (void) {
-	printf("Circular Buffer program start\n");
+  printf("Circular Buffer program start\n");
   
   // INIT
   // ===============================
   bool running = true;
-  bool footSwitch = false; // TODO set defaults
+  bool footSwitch = false; // TODOM set defaults?
   char timeRotary[CONFIG_SIZE] = "active";
   
   // Init mutex
@@ -122,12 +122,10 @@ void main (void) {
   }
   
   // Init PRU
-  /*
   pthread_t threadID;
   if (pthread_create(&threadID, NULL, pruThread, NULL) != 0) {
     printf("Failed to init thread");
   }
-  */
   // ===============================
   
   // MAIN CONFIG FILE LOOP 
@@ -135,15 +133,14 @@ void main (void) {
   while (running) {
     running = false; // DEBUG
     save = true; // DEBUG
-    int i;
-    for (i = 0; i < BUFFER_LENGTH; i++) {
+    int i; // DEBUG
+    for (i = 0; i < BUFFER_SIZE; i++) {
       sampleBuffer[i] = 4095;
-    }
+    } // DEBUG
     
     // Read config file and set values
     // Init file read vars
-    FILE *file;
-    file = fopen("/root/conf/DIO.config", "r");
+    FILE *file = fopen("/root/conf/DIO.config", "r");
     char strBuf[40];
     char* lbl;
     char* val;
@@ -157,11 +154,11 @@ void main (void) {
     if (file) {
       printf("Config file detected...\n");
       while (!(fscanf(file, "%s", strBuf) == EOF)) {
-        printf("entering loop: %s\n", strBuf);
+        //printf("Entering loop: %s\n", strBuf);
         lbl = strtok(strBuf, delim); // Start of label
         val = strtok(NULL, delim); // Value
 
-        printf("lbl: %s val: %s\n", lbl, val);
+        //printf("lbl: %s val: %s\n", lbl, val);
         if (strcmp(lbl, "CompRotary") == 0) {
           strncpy(compRotary, val, CONFIG_SIZE);
         }
@@ -174,10 +171,10 @@ void main (void) {
           }
         }
       }
-      fclose(file);
+      fclose(file); /*
       printf("%s\n", compRotary);
       printf("%s\n", newTimeRotary);
-      printf("%d\n", newFootSwitch);
+      printf("%d\n", newFootSwitch);*/
     }
     
     // Block write thread to check for save switching?
@@ -186,7 +183,7 @@ void main (void) {
     // Handle toggle of footswitch
     if (newFootSwitch != footSwitch) {
       //pthread_mutex_lock(&pruWrite);
-      if (start = -1 && strcmp(newTimeRotary, "active")) { // If we are active and we are not started 
+      if (start = -1 && strcmp(newTimeRotary, "active") == 0) { // If we are active and we are not started 
         start = next; // start active
       }
       else { // save buffer
@@ -208,7 +205,7 @@ void main (void) {
     if (save) {
       // Open file
       file = fopen("/root/testOut.raw", "wb");
-      printf("saving\n");
+      printf("Saving\n");
       if (file) {
         // Set write head start
         if (start == -1) { // if passive get prev
@@ -228,18 +225,18 @@ void main (void) {
             start = next - 150*SAMPLE_RATE;
           }
           //else { // full 3 min
-          if (start < 0) { // DEBUG 1 MIN ONLY
+          if (start < 0) { // DEBUG MAX MINUTES ONLY
             start = next;
           }
         }
       
         // Write until we meet next (end)
         do {
-          // write to file TODO
+          // write to file TODOM improve one by one?
           fwrite(&sampleBuffer[start], 2, 1, file); // one by one, find out a way to save all
           //printf("%d\n%d\n", start, &sampleBuffer[start]);
           start++;
-          if (start == max) {
+          if (start == BUFFER_SIZE) {
             start = 0;
           }
         } while (start != next);
@@ -267,7 +264,7 @@ void main (void) {
   pthread_mutex_unlock(&stop);
   
   // Wait for thread to end
-  //pthread_join(threadID, NULL);
+  pthread_join(threadID, NULL);
   
   // Cleanup
   pthread_mutex_destroy(&stop);
