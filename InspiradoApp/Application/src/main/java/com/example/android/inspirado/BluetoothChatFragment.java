@@ -420,7 +420,7 @@ public class BluetoothChatFragment extends Fragment {
                                 networks.clear();
 
                                 for(JsonElement net : array){
-                                    networks.add(net.getAsJsonObject().get("name").getAsString());
+                                    networks.add(net.getAsJsonObject().get("ssid").getAsString());
                                 }
 
                                 //Update the spinner
