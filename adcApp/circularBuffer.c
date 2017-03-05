@@ -9,6 +9,8 @@
 #define BUFFER_SIZE SAMPLE_RATE // DEBUG current buffer length is 1 sec
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
 
+#define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
+
 typedef int bool; // Define bool
 #define true 1
 #define false 0
@@ -22,10 +24,19 @@ int next = 0;
 int start = -1;
 int sampleBuffer[BUFFER_SIZE];
 
+unsigned int readFileVal(char filenm[]) {
+  FILE* fp;
+  unsigned int value = 0;
+  fp = fopen(filenm, "rt");
+  fscanf(fp, "%x", &value);
+  fclose(fp);
+  return value;
+}
+
 void *pruThread (void *var) {
   // INIT
   // ===============================
-  printf("pru Thread active");
+  printf("pru Thread active\n");
   int r;
   
   // Allocate and init mem
@@ -34,9 +45,9 @@ void *pruThread (void *var) {
     printf("Failed to init prussdrv driver\n");
     return NULL;
   }
-  r = prussdrv_open(PRU_NUM);
+  r = prussdrv_open(PRU_EVTOUT_0);
   if (r != 0) {
-    printf("Failed to open PRU %d\nerror:%d\n", PRU_NUM, r);
+    printf("Failed to open PRU %d\nerror:%d\n", PRU_EVTOUT_0, r);
     prussdrv_exit();
     return NULL;
   }
@@ -50,17 +61,27 @@ void *pruThread (void *var) {
     return NULL;
   }
 
+  // Load memory
+  unsigned int load = 0x0149;
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &load, 2);
+  if (r < 0) {
+    printf("Failed to write memory block\n");
+    prussdrv_exit();
+    return NULL;
+  }
+
   // Load and execute the PRU program on PRU
-  //prussdrv_exec_program(PRU_NUM, "adcSample.bin"); DEBUG let's not do this right now
+  prussdrv_exec_program(PRU_NUM, "adcSample.bin");
   // ===============================
 
   // MAIN PRU LOOP
   // ===============================
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
+    //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, 0);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     
     // Write to buffer
     pthread_mutex_lock(&pruWrite);
@@ -82,7 +103,7 @@ void *pruThread (void *var) {
     }
     pthread_mutex_unlock(&pruWrite);
     
-    // Check to see if we should stop sampling
+    // Check to see if we should stop
     pthread_mutex_lock(&stop);
     if (!run) {
       break;
@@ -90,7 +111,8 @@ void *pruThread (void *var) {
     pthread_mutex_unlock(&stop);
     
     // Continue PRU sampling TODO
-    prussdrv_pru_send_event(PRU_EVTOUT_0);
+    prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
   }
   // ===============================
   
@@ -98,7 +120,7 @@ void *pruThread (void *var) {
   prussdrv_pru_disable(PRU_NUM);
   prussdrv_exit();
   
-  printf("pru Thread stopped");
+  printf("pru Thread stopped\n");
   return NULL;
 }
 
@@ -113,30 +135,34 @@ void main (void) {
   
   // Init mutex
   if (pthread_mutex_init(&stop, NULL) != 0) {
-    printf("Failed to init mutex stop");
+    printf("Failed to init mutex stop\n");
     return;
   }
   if (pthread_mutex_init(&pruWrite, NULL) != 0) {
-    printf("Failed to init mutex stop");
+    printf("Failed to init mutex pruWrite\n");
     return;
   }
   
   // Init PRU
   pthread_t threadID;
   if (pthread_create(&threadID, NULL, pruThread, NULL) != 0) {
-    printf("Failed to init thread");
+    printf("Failed to init pru thread obj\n");
   }
   // ===============================
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
+  int numEpochs = 5000;
   while (running) {
-    running = false; // DEBUG
-    save = true; // DEBUG
-    int i; // DEBUG
-    for (i = 0; i < BUFFER_SIZE; i++) {
-      sampleBuffer[i] = 4095;
-    } // DEBUG
+    if (numEpochs < 0) {
+       running = false; // DEBUG
+    }
+    numEpochs--;
+    //save = true; // DEBUG
+    //int i; // DEBUG
+    //for (i = 0; i < BUFFER_SIZE; i++) {
+      //sampleBuffer[i] = 4095;
+    //} // DEBUG
     
     // Read config file and set values
     // Init file read vars
@@ -182,30 +208,25 @@ void main (void) {
     
     // Handle toggle of footswitch
     if (newFootSwitch != footSwitch) {
-      //pthread_mutex_lock(&pruWrite);
       if (start = -1 && strcmp(newTimeRotary, "active") == 0) { // If we are active and we are not started 
         start = next; // start active
       }
       else { // save buffer
         save = true;
       }
-      //pthread_mutex_unlock(&pruWrite);
     }
     
     // Handle switching from active to retroactive if we are running
     if (start > 0 && strcmp(newTimeRotary, timeRotary) != 0) {
-      //pthread_mutex_lock(&pruWrite);
       //save = true; // saves sample
       start = -1; // stops active recording
-      //pthread_mutex_unlock(&pruWrite);
     }
     
     // If we are saving
-    //pthread_mutex_lock(&pruWrite);
     if (save) {
       // Open file
       file = fopen("/root/testOut.raw", "wb");
-      printf("Saving\n");
+      printf("Saving output file\n");
       if (file) {
         // Set write head start
         if (start == -1) { // if passive get prev
@@ -228,6 +249,7 @@ void main (void) {
           if (start < 0) { // DEBUG MAX MINUTES ONLY
             start = next;
           }
+          // TODO handle negative number
         }
       
         // Write until we meet next (end)
@@ -259,11 +281,13 @@ void main (void) {
   // ===============================
   
   // Tell thread to stop
+  printf("stopping thread\n");
   pthread_mutex_lock(&stop);
   run = false;
   pthread_mutex_unlock(&stop);
   
   // Wait for thread to end
+  printf("wait for thread to end\n");
   pthread_join(threadID, NULL);
   
   // Cleanup
