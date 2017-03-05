@@ -107,7 +107,8 @@ public class BluetoothChatFragment extends Fragment {
     /*
     * ArrayAdapter to populate available networks
     * */
-    String[] network = {"SecureWireless","PrettyFlyForAWifi"};
+    ArrayList<String> networks = new ArrayList<String>(){{add("SecureWireless"); add("PrettyFlyForAWifi");}};
+    private ArrayAdapter<String> mAdapterNetwork = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -122,6 +123,7 @@ public class BluetoothChatFragment extends Fragment {
             Toast.makeText(activity, "Bluetooth is not available", Toast.LENGTH_LONG).show();
             activity.finish();
         }
+
     }
 
 
@@ -183,7 +185,7 @@ public class BluetoothChatFragment extends Fragment {
         final Button mTestButton = (Button) getView().findViewById(R.id.button_test);
         mTestButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v){
-                sendMessage("HEINEKEN?");
+                sendMessage("ListWifi");
             }
         });
 
@@ -205,9 +207,9 @@ public class BluetoothChatFragment extends Fragment {
             }
         });
 
-        ArrayAdapter<String> adapterNetwork = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_spinner_dropdown_item, network);
-        adapterNetwork.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        mSpinner.setAdapter(adapterNetwork);
+        mAdapterNetwork = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_spinner_dropdown_item, networks);
+        mAdapterNetwork.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mSpinner.setAdapter(mAdapterNetwork);
 
     }
 
@@ -405,23 +407,24 @@ public class BluetoothChatFragment extends Fragment {
                     try{
                         JsonParser parser = new JsonParser();
                         JsonObject o = parser.parse(readMessage).getAsJsonObject();
-
-                        Context context = getActivity().getApplicationContext();
-                        int duration = Toast.LENGTH_SHORT;
                         String type = o.get("type").getAsString();
+
+                        /*Context context = getActivity().getApplicationContext();
+                        int duration = Toast.LENGTH_SHORT;
                         Toast toast = Toast.makeText(context, type, duration);
-                        toast.show();
+                        toast.show();*/
 
                         switch(type){
                             case "listNetworks":
                                 JsonArray array = o.get("networks").getAsJsonArray();
-                                ArrayList<String> networks = new ArrayList<String>();
+                                networks.clear();
+
                                 for(JsonElement net : array){
-                                    networks.add(net.getAsJsonObject().get("name").getAsString());
-                                    toast = Toast.makeText(context, net.getAsJsonObject().get("name").getAsString(), duration);
-                                    toast.show();
+                                    networks.add(net.getAsJsonObject().get("ssid").getAsString());
                                 }
-                                //TODO notifyDataSetChanged somehow
+
+                                //Update the spinner
+                                mAdapterNetwork.notifyDataSetChanged();
 
                                 break;
                             default:
@@ -430,10 +433,6 @@ public class BluetoothChatFragment extends Fragment {
 
                     }catch(Exception e){
                         //Not valid JSON
-                        Context context = getActivity().getApplicationContext();
-                        int duration = Toast.LENGTH_SHORT;
-                        Toast toast = Toast.makeText(context, "Not valid Json", duration);
-                        toast.show();
                     }
 
                     mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);

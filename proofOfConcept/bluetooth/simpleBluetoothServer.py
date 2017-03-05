@@ -1,5 +1,9 @@
+#!/usr/bin/python3
 import bluetooth
 import json
+import time
+
+import wifiScript as w 
 
 server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
@@ -33,7 +37,14 @@ def listNetworks():
     # Goal: Run the wifi script to scan for networks
     # Script returns list of network objects
     # Serialize into json string, return the json string
-    networks = '{"type":"listNetworks","networks":[{"name":"SecureWireless"},{"name":"ThyNeighborsWifi"}]}'  #Hardcoded example
+
+    network_object = w.scanNetworks()
+    json_string = json.dumps([element.__dict__ for element in network_object])
+    prepend = '{"type":"listNetworks","networks":'
+    append = '}'
+    
+    networks = prepend + json_string + append
+
     return networks
 
 def defaultReply():
@@ -42,7 +53,10 @@ def defaultReply():
 while True:
     print("Waiting for a connection...")
     client_sock,address = server_sock.accept()
+    
     try: 
+        print("Waiting for a connection...")
+        client_sock,address = server_sock.accept()
         print("Accepted connection from ",address)
         greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
         client_sock.send(greeting)
@@ -62,6 +76,10 @@ while True:
                 break
     except Exception as e:
         print(e)
-        #client_sock.close()
-    
+    except KeyboardInterrupt:
+        print("Stopping...")
+        bluetooth.stop_advertising(server_sock)
+        client_sock.close()
+        server_sock.close()
+        break     
 
