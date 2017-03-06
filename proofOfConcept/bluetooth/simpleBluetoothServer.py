@@ -34,17 +34,13 @@ def handleCommand(cmd):
     client_sock.send(msg.encode('utf-8'))
       
 def listNetworks():
-    # Goal: Run the wifi script to scan for networks
-    # Script returns list of network objects
-    # Serialize into json string, return the json string
-
+    #Get json object representing available networks from wifi script
     network_object = w.scanNetworks()
     json_string = json.dumps([element.__dict__ for element in network_object])
     prepend = '{"type":"listNetworks","networks":'
     append = '}'
     
     networks = prepend + json_string + append
-
     return networks
 
 def defaultReply():
@@ -58,6 +54,7 @@ while True:
         print("Accepted connection from ",address)
         greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
         client_sock.send(greeting)
+        handleCommand('ListWifi')
         
         while True:
             data = client_sock.recv(1024)
