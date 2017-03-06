@@ -471,6 +471,9 @@ public class BluetoothChatService {
             //Log.i(TAG, "BEGIN mConnectedThread");
             byte[] buffer = new byte[1024];
             int bytes;
+            
+            // nop until we get connected, then start the reading cycle
+            while (mState != STATE_CONNECTED) { System.nanoTime(); }
 
             // Keep listening to the InputStream while connected
             while (mState == STATE_CONNECTED) {

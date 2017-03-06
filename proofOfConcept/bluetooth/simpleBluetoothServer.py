@@ -51,6 +51,8 @@ while True:
     client_sock,address = server_sock.accept()
     
     try: 
+        print("Waiting for a connection...")
+        client_sock,address = server_sock.accept()
         print("Accepted connection from ",address)
         greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
         client_sock.send(greeting)
@@ -71,6 +73,10 @@ while True:
                 break
     except Exception as e:
         print(e)
-        #client_sock.close()
-    
+    except KeyboardInterrupt:
+        print("Stopping...")
+        bluetooth.stop_advertising(server_sock)
+        client_sock.close()
+        server_sock.close()
+        break     
 
