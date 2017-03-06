@@ -1,4 +1,4 @@
-// PRU-ICSS program to flash a LED on P9_27 (pru0_pru_r30_5)
+// PRU-ICSS program to flash a LED on P9_28 (pru0_pru_r30_3)
 
 .origin 0               // start of program in PRU memory
 .entrypoint START       // program entry point
@@ -20,7 +20,7 @@ START:
   LSL   tmp0, tmp0, 1   // shift left
   SBBO  tmp0, locals, 0x8, 8 // store shift after val
 LEDON:
-  SET   R30.T5          // set the output pin (LED on)
+  SET   R30.T3          // set the output pin (LED on)
   MOV   r0, DELAY       // store the length of the delay in reg0
 
 DELAYON:
@@ -28,7 +28,7 @@ DELAYON:
   QBNE  DELAYON, R0, 0  // loop to DELAYON, unless REG0 = 0
 
 LEDOFF:
-  CLR   R30.T5          // clear the output bin (LED off)
+  CLR   R30.T3          // clear the output bin (LED off)
   MOV   R0, DELAY       // reset REG0 to the length of delay
 
 DELAYOFF:
