@@ -20,7 +20,6 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -44,20 +43,25 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.common.base.Charsets;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import java.security.Key;
-import java.util.ArrayList;
+import org.json.JSONObject;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
+import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import se.simbio.encryption.Encryption;
 
 
 //import com.example.android.common.logger.Log;
@@ -107,8 +111,9 @@ public class BluetoothChatFragment extends Fragment {
     /*
     * ArrayAdapter to populate available networks
     * */
-    ArrayList<String> networks = new ArrayList<String>(){{add("SecureWireless"); add("PrettyFlyForAWifi");}};
-    private ArrayAdapter<String> mAdapterNetwork = null;
+    ArrayList<String> networks = new ArrayList<String>(){{add("Securewireless");}};
+    ArrayList<Network> networksTest = new ArrayList<Network>(){{add(new Network(0,"Securewireless","peap"));}};
+    private ArrayAdapter<Network> mAdapterNetwork = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -185,7 +190,12 @@ public class BluetoothChatFragment extends Fragment {
         final Button mTestButton = (Button) getView().findViewById(R.id.button_test);
         mTestButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v){
-                sendMessage("ListWifi");
+                Gson gson = new Gson();
+                JsonObject jsonObject = new JsonObject();
+                jsonObject.addProperty("type","listNetworks");
+                jsonObject.addProperty("parameters","");
+                String json = gson.toJson(jsonObject);
+                sendMessage(json);
             }
         });
 
@@ -196,58 +206,156 @@ public class BluetoothChatFragment extends Fragment {
                 if(null != view) {
                     String ssid = mSpinner.getSelectedItem().toString();
                     String password = mEditPassword.getText().toString();
-                    password = encrypt(password);
+                    String passwordEncrypted = encrypt(password);
+                    int id = networksTest.indexOf(mSpinner.getSelectedItem());
+                    String status = networksTest.get(id).getStatus();
+                    String security = networksTest.get(id).getSecurity();
+                    String serviceKey = networksTest.get(id).getServiceKey();
 
                     Gson gson = new Gson();
-                    Network network = new Network(ssid, password);
-                    String json = gson.toJson(network);
+                    JsonObject jsonObject = new JsonObject();
+                    jsonObject.addProperty("type","connectToNetwork");
+                    jsonObject.add("parameters", gson.toJsonTree(new Network(id,ssid,serviceKey,status,security,password)));
+                    String json = gson.toJson(jsonObject);
 
                     sendMessage(json);
                 }
             }
         });
 
-        mAdapterNetwork = new ArrayAdapter<String>(getActivity(),android.R.layout.simple_spinner_dropdown_item, networks);
+        mAdapterNetwork = new ArrayAdapter<Network>(getActivity(),android.R.layout.simple_spinner_dropdown_item, networksTest);
         mAdapterNetwork.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mSpinner.setAdapter(mAdapterNetwork);
 
     }
 
     String encrypt(String text){
-        String key ="YourKey";
-        String salt = "YourSalt";
-        byte[] iv = new byte[16];
-        Encryption encryption = Encryption.getDefault(key,salt,iv);
-        String encrpyted = encryption.encryptOrNull(text);
-        return encrpyted;
+        //TODO Fix this garbage function
+        String iv = "WHYDOINEEDIVHELP";
+        String SecretKey = "WHYDOINEEDKEYPLZ";
+
+        IvParameterSpec ivspec = new IvParameterSpec(iv.getBytes());
+        SecretKeySpec keyspec = new SecretKeySpec(SecretKey.getBytes(), "AES");
+        Cipher c = null;
+
+        try {
+            c = Cipher.getInstance("AES/CBC/NoPadding");
+        }catch(NoSuchAlgorithmException e){
+
+        }catch(NoSuchPaddingException e){
+
+        }
+
+        byte[] encrypted = null;
+
+        try{
+            c.init(c.ENCRYPT_MODE, keyspec);
+            encrypted = c.doFinal(padString(text).getBytes());
+        }catch(Exception e){
+
+        }
+        String encrpytedString =  byteArraytoHexString(encrypted);
+        return encrpytedString;
+
+    }
+
+    static String byteArraytoHexString(byte[] array) {
+        StringBuffer hexString = new StringBuffer();
+        for (byte b : array) {
+            int intVal = b & 0xff;
+            if (intVal < 0x10)
+                hexString.append("0");
+            hexString.append(Integer.toHexString(intVal));
+        }
+        return hexString.toString();
+    }
+
+    static String padString(String source) {
+        char paddingChar = 0;
+        int size = 16;
+        int x = source.length() % size;
+        int padLength = size - x;
+        for (int i = 0; i < padLength; i++) {
+            source += paddingChar;
+        }
+        return source;
     }
 
     class Network{
+        private int id;
         private String ssid;
+        private String security;
+        private String status;
+        private String serviceKey;
         private String password;
 
         public Network(){}
 
-        public Network(String ssid, String password){
+        public Network(int id, String ssid, String security){
+            this.id = id;
+            this.ssid = ssid;
+            this.security = security;
+        }
+
+        public Network(int id, String ssid, String password, int dummy){
+            this.id = id;
             this.ssid = ssid;
             this.password = password;
         }
 
-        public void setSsid(String ssid){
+        public Network(int id, String ssid, String serviceKey, String status, String security){
+            this.id = id;
             this.ssid = ssid;
+            this.serviceKey = serviceKey;
+            this.status = status;
+            this.security = security;
+        }
+
+        public Network(int id, String ssid, String serviceKey, String status, String security, String password){
+            this.id = id;
+            this.ssid = ssid;
+            this.serviceKey = serviceKey;
+            this.status = status;
+            this.security = security;
+            this.password = password;
+        }
+
+        public Network(int id, String ssid, String securityType, String connectionStatus){
+            this.id = id;
+            this.ssid = ssid;
+            this.security = securityType;
+            this.status = connectionStatus;
+        }
+
+        public int getId(){
+            return this.id;
+        }
+
+        public String getSsid(){
+            return this.ssid;
+        }
+
+        public String getStatus(){
+            return this.status;
+        }
+
+        public String getSecurity(){
+            return this.security;
+        }
+
+        public String getServiceKey(){
+            return this.serviceKey;
+        }
+
+        @Override public String toString(){
+            return ssid;
         }
 
     }
 
-    class AvailableNetworks{
-        private ArrayList<Network> networks = new ArrayList<Network>();
-
-        public AvailableNetworks(String[] network_ssids){
-            Network tmp = new Network(network_ssids[0], "");
-            for(int i = 0; i < network_ssids.length; i++)
-                tmp.setSsid(network_ssids[i]);
-                this.networks.add(tmp);
-        }
+    class Command{
+        private String type;
+        //TODO Expand on this
     }
 
     /**
@@ -417,10 +525,15 @@ public class BluetoothChatFragment extends Fragment {
                         switch(type){
                             case "listNetworks":
                                 JsonArray array = o.get("networks").getAsJsonArray();
-                                networks.clear();
+                                networksTest.clear();
 
                                 for(JsonElement net : array){
-                                    networks.add(net.getAsJsonObject().get("ssid").getAsString());
+                                    networksTest.add(new Network(
+                                            net.getAsJsonObject().get("id").getAsInt(),
+                                            net.getAsJsonObject().get("ssid").getAsString(),
+                                            net.getAsJsonObject().get("security").getAsString(),
+                                            net.getAsJsonObject().get("status").getAsString()
+                                    ));
                                 }
 
                                 //Update the spinner

@@ -3,6 +3,10 @@
 import os
 import subprocess
 import re
+import getpass
+import json
+
+import pdb
 
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
@@ -16,6 +20,9 @@ class NetworkItem(object):
         self.serviceKey = serviceKey
         self.security = security
 
+    def serialize(self):
+        # make a dictionary out of the class' properties, then stringify
+        return json.dumps(self.__dict__)
 
 # start fresh
 if(os.path.isfile("log")):
@@ -81,9 +88,26 @@ def scanNetworks(log_file = ''):
             security = 'wpa-psk'
         elif "ieee8021x" in network_item[-1]:
             security = 'peap'
-    
+
+        # remove spaces from ssid and reform network_item
+        # temp_network_item = network_item
+        # network_item = []
+        # temp_range = range(len(temp_network_item))
+        # temp_string = ""
+        # temp_connected = ""
+        # temp_val = ""
+        # for x in temp_range:
+        #     temp_val = temp_network_item[-1*(x+1)]
+        #     if "wifi" not in temp_val:
+        #         temp_string = "".join((temp_network_item[-1*(x+1)],temp_string))
+        #     elif "*" in temp_val:
+        #         network_item.append(temp_val)
+
+        # network_item.append(temp_string)
+        # network_item.append(temp_network_item[-1])
+
         # fill object accordingly
-        if (len(network_item) >= 3):
+        if (len(network_item) >= 3):            
             # detect if connected via first string (i.e. "*AO" means connected)
             status = network_item[0]
             if('O' in status):
@@ -162,15 +186,17 @@ def configSettings(log_file, ssid, skey):
         log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
 
 def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
+    #pdb.set_trace()
     log_file.close()    
     log = open("log","ab")
+    pass_phrase = ""
     
     # based on selected security, (local only) prompt for username / password...
     if not passphrase and not network_id:
         if "peap" in selected_network.security:
-            networkId = input("please enter your network identity (dont care for single_auth networks): ");
+            network_id = input("please enter your network identity (dont care for single_auth networks): ");
         if "open" not in selected_network.security:
-            passPhrase = input("please enter your passphrase: ");
+            pass_phrase = getpass.getpass("please enter your passphrase: ");
     
     # start session so we can utilize agent utility
     p = Popen(['connmanctl'], bufsize=64, stdout=log, stdin=PIPE, stderr=log)
@@ -183,7 +209,7 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     p.stdin.write(bytes('connect ' + selected_network.serviceKey + '\n','utf-8'));
     p.stdin.flush()
     sleep(0.75)
-    p.stdin.write(bytes(passPhrase+'\n','utf-8'))
+    p.stdin.write(bytes(pass_phrase+'\n','utf-8'))
     p.stdin.flush()
     sleep(0.5)
     p.stdin.write(bytes('exit\n','utf-8'))
@@ -198,8 +224,8 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
         config_content = peap_template
         if "peap" not in selected_network.security:
             config_content = single_auth_template
-        config_content = config_content.replace("<NETID>",networkId)
-        config_content = config_content.replace("<PASSPHRASE>",passPhrase)
+        config_content = config_content.replace("<NETID>",network_id)
+        config_content = config_content.replace("<PASSPHRASE>",pass_phrase)
         config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
         config_content = config_content.replace("<SSID>",selected_network.ssid)
         config_file.write(config_content)
@@ -226,7 +252,7 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     log.close()
     log_file = open("log","a")
 
-# # main...
+# main...
 # setupWifi()
 # log_file = open("log","a")
 # network_items = scanNetworks(log_file)
