@@ -9,12 +9,12 @@ count = 0
 debounce = False
 flag = 0
 currentSwitchState = 0
+temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\n" #set template
 
 def getIndex(val, length):
     return val%length
 
 while True:
-    temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\n" #set template
 
     # get rotary value for retro-Time/Active
 	
@@ -29,14 +29,14 @@ while True:
     
     if (currentReading - prevRotaryReading1) > 10:
         idxTime+=1
+		temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
         prevRotaryReading1 = currentReading
         flag = 1
     elif (prevRotaryReading1 - currentReading) > 10:
         idxTime-=1
+		temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
         prevRotaryReading1 = currentReading
         flag = 1
-		
-	temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
     
     
     # get rotary value for compression type
@@ -53,19 +53,20 @@ while True:
     
     if (currentReading - prevRotaryReading1) > 10:
         idxType+=1
+		temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))])	# write to config
         prevRotaryReading2 = currentReading
         flag = 1
     elif (prevRotaryReading2 - currentReading) > 10:
         idxType-=1
+		temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))])	# write to config
         prevRotaryReading2 = currentReading
         flag = 1
-		
-	temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))])	# write to config
 
     # get latchswitch value for recording
     if prevSwitchReading == -1: # if init, set previous as current
         prevSwitchReading = currentReading
         currentSwitchState = False
+		temp = temp.replace("zz",str(currentSwitchState)) # write to config
         flag = 1
     
     if prevSwitchReading != currentReading:
@@ -76,11 +77,10 @@ while True:
         count +=1 #debouncing
         if count == 5:
             currentSwitchState = not currentSwitchState # write to config
+			temp = temp.replace("zz",str(currentSwitchState))
             count = 0
             debounce = False
             flag = 1
-		
-	temp = temp.replace("zz",str(currentSwitchState)) # write to config
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')
