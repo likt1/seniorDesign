@@ -25,6 +25,7 @@ while True:
     if prevRotaryReading1 == -500000: # if init, set previous as current
         prevRotaryReading1 = currentReading
         idxTime = 3
+        temp = temp.replace("yy",settingsType[3])
         flag = 1
     
     if (currentReading - prevRotaryReading1) > 10:
