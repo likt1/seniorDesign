@@ -6,7 +6,8 @@
 
 #define PRU_NUM 0 // Using PRU0
 #define SAMPLE_RATE 44100 // Set sample rate
-#define BUFFER_SIZE SAMPLE_RATE // DEBUG current buffer length is 1 sec
+#define BUFFER_LENGTH 30 // DEBUG length is 30 sec
+#define BUFFER_SIZE (SAMPLE_RATE*BUFFER_LENGTH) // Set buffer size
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
 
 #define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
@@ -22,8 +23,9 @@ pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
-int sampleBuffer[BUFFER_SIZE];
+unsigned int *sampleBuffer;
 
+// Opens up file and parses value in hex
 unsigned int readFileVal(char filenm[]) {
   FILE* fp;
   unsigned int value = 0;
@@ -124,7 +126,7 @@ void *pruThread (void *var) {
   return NULL;
 }
 
-void main (void) {
+void buffer (void) {
   printf("Circular Buffer program start\n");
   
   // INIT
@@ -249,7 +251,10 @@ void main (void) {
           if (start < 0) { // DEBUG MAX MINUTES ONLY
             start = next;
           }
-          // TODO handle negative number
+          
+          if (start < 0) { // Handle negative numbers
+            start += BUFFER_SIZE;
+          }
         }
       
         // Write until we meet next (end)
@@ -294,4 +299,19 @@ void main (void) {
   pthread_mutex_destroy(&stop);
   pthread_mutex_destroy(&pruWrite);
   printf("Circular Buffer program end\n");
+}
+
+void main (void) {
+  sampleBuffer = malloc(sizeof(int) * BUFFER_SIZE);
+  printf("Buffer size %d\n", BUFFER_SIZE);
+  
+  //buffer();
+  unsigned int testIn;
+  testIn = readFileVal(PRU0MAP_LOC "addr");
+  printf("Addr val %d\n", testIn);
+  printf("Uint max %d\n", UINT_MAX);
+  printf("Long max %d\n", LONG_MAX);
+  printf("LLong max %d\n", LLONG_MAX);
+  
+  free(sampleBuffer);
 }
