@@ -26,7 +26,7 @@ struct configs {
   bool footSwitch;
   char compRotary[CONFIG_SIZE];
   char timeRotary[CONFIG_SIZE];
-}
+};
 
 bool run = true;
 bool noop = false;
@@ -309,7 +309,7 @@ void buffer (void) {
     curConfig.footSwitch = newConfig.footSwitch;
     strncpy(curConfig.timeRotary, newConfig.timeRotary, CONFIG_SIZE);
     strncpy(curConfig.compRotary, newConfig.compRotary, CONFIG_SIZE);
-    nanosleep(sleepTime);
+    nanosleep(&sleepTime, NULL);
   }
   // ===============================
   
