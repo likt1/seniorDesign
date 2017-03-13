@@ -125,7 +125,7 @@ void *pruThread (void *var) {
     }
     pthread_mutex_unlock(&stop);
 
-    // Continue PRU sampling TODO
+    // Continue PRU sampling
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
   }
@@ -150,7 +150,7 @@ void buffer (void) {
   strncpy(curConfig.timeRotary, "\0", CONFIG_SIZE);
   strncpy(curConfig.compRotary, "\0", CONFIG_SIZE);
   
-  struct timespec sleepTime = {0, 50000000};
+  struct timespec sleepTime = {0, 10000000};
   
   // Init mutex
   if (pthread_mutex_init(&stop, NULL) != 0) {
@@ -171,13 +171,13 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 5000;
+  int numEpochs = 100;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
     }
     numEpochs--;
-    save = true; // DEBUG
+    // save = true; // DEBUG
     /* int i; // DEBUG
     for (i = 0; i < BUFFER_SIZE; i++) {
       sampleBuffer[i] = 4095;
