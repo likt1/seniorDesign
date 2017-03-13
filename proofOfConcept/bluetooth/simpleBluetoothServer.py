@@ -65,7 +65,6 @@ def defaultReply():
 
 while True:
     print("Waiting for a connection...")
-    client_sock,address = server_sock.accept()
     
     try: 
         print("Waiting for a connection...")
