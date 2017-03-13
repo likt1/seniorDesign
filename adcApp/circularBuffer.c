@@ -6,28 +6,9 @@
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
-// ABOUT VALUES (Used limits.h):
-// Our int can handle +-2147483647, works for indexing our huge buffer
-// Our ushort handles 65535, so is 16bit, perfect for our sample vals
+#include "circularBuffer.h"
 
-#define PRU_NUM 0 // Using PRU0
-#define SAMPLE_RATE 44100 // Set sample rate
-#define BUFFER_LENGTH 30 // DEBUG length is 30 sec
-#define BUFFER_SIZE (SAMPLE_RATE*BUFFER_LENGTH) // Set buffer size
-#define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
-
-#define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
-
-typedef char bool; // Define bool
-#define true 1
-#define false 0
-
-struct configs {
-  bool footSwitch;
-  char compRotary[CONFIG_SIZE];
-  char timeRotary[CONFIG_SIZE];
-};
-
+// Init globals
 bool run = true;
 bool noop = false;
 bool save = false;
@@ -35,13 +16,13 @@ pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
-unsigned short *sampleBuffer;
-unsigned int PRU0RamAddrOff;
+halfword *sampleBuffer;
+word PRU0RamAddrOff;
 
 // Opens up file and parses value in hex
-unsigned int readFileVal(char filenm[]) {
+word readFileVal(char filenm[]) {
   FILE* fp;
-  unsigned int value = 0;
+  word value = 0;
   fp = fopen(filenm, "rt");
   fscanf(fp, "%x", &value);
   fclose(fp);
@@ -76,8 +57,8 @@ void *pruThread (void *var) {
     return NULL;
   }
 
-  // Load memory
-  unsigned int load = 0x0149;
+  // Load memory debug
+  word load = 0x00000149;
   r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &load, 2);
   if (r < 0) {
     printf("Failed to write memory block\n");
@@ -103,7 +84,7 @@ void *pruThread (void *var) {
     if (!noop) {
       int i;
       for (i = 0; i < 0; i++) { // For each sample in pru buffer
-        unsigned short sample = 0; // Get sample from pru buffer TODO HERE
+        halfword sample = 0; // Get sample from pru buffer TODO HERE
         sampleBuffer[next] = sample * 16;
         next++;
         if (next == BUFFER_SIZE) {
@@ -150,7 +131,7 @@ void buffer (void) {
   strncpy(curConfig.timeRotary, "\0", CONFIG_SIZE);
   strncpy(curConfig.compRotary, "\0", CONFIG_SIZE);
   
-  struct timespec sleepTime = {0, 10000000};
+  struct timespec sleepTime = {0, 10000000}; // sleep for 10 ms
   
   // Init mutex
   if (pthread_mutex_init(&stop, NULL) != 0) {
@@ -171,7 +152,7 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 100;
+  int numEpochs = 200;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
@@ -286,7 +267,7 @@ void buffer (void) {
         // Write until we meet next (end)
         do {
           // write to file TODOM improve one by one?
-          fwrite(&sampleBuffer[start], 2, 1, file); // one by one, find out a way to save all
+          fwrite(&sampleBuffer[start], sizeof(halfword), 1, file); // one by one, find out a way to save all
           //printf("%d\n%d\n", start, &sampleBuffer[start]);
           start++;
           if (start == BUFFER_SIZE) {

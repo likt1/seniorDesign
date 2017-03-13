@@ -1,24 +1,47 @@
 // PRU-ICSS program to flash a LED on P9_28 (pru0_pru_r30_3)
 
+#define PRU0_ARM_INT  19 // allows notification of program compl
+
+#define ADC_BASE      0x44e0d000
+#define ADC_FIFO0DATA (ADC_BASE + 0x0100)
+#define CONTROL       0x0040
+#define SPEED         0x004c
+#define STEP1         0x0064
+#define DELAY1        0x0068
+#define STATUS        0x0044
+#define STEPCONFIG    0x0054
+#define FIFO0COUNT    0x00e4
+
 .origin 0               // start of program in PRU memory
 .entrypoint START       // program entry point
 
-#define INS_PER_US 200        // 5ns per instruction
-#define INS_PER_DELAY_LOOP 2  // two instructions per delay loop
+// Register allocations
+#define adc_      r6
+#define fifo0data r7
+#define out_buff  r8
+#define locals    r9
 
-// Set up a 50ms delay
-#define DELAY 50 * 1000 * (INS_PER_US / INS_PER_DELAY_LOOP)
-#define PRU0_ARM_INTERRUPT 19 // allows notification of program compl
+#define value     r10
+#define channel   r11
+#define ema       r12
+#define encoders  r13
+#define cap_delay r14
 
-#define tmp0 r1
+#define tmp0      r1
+#define tmp1      r2
+#define tmp2      r3
+#define tmp3      r4
+#define tmp4      r5
 
-#define locals r6
+// 1 word is 4 bytes
 
 START:
-  MOV   locals, 0       // local values at pos 0
-  LBBO  tmp0, locals, 0, 8 // grab first unsigned int and store in r1
-  LSL   tmp0, tmp0, 1   // shift left
-  SBBO  tmp0, locals, 0x8, 8 // store shift after val
+  MOV adc_, ADC_BASE
+	MOV fifo0data, ADC_FIFO0DATA
+	MOV locals, 0
+  
+  
+  
 LEDON:
   SET   R30.T3          // set the output pin (LED on)
   MOV   r0, DELAY       // store the length of the delay in reg0
@@ -37,7 +60,7 @@ DELAYOFF:
   
 // Notify flash to ARM
 NOTIFY:  
-  MOV   R31.B0, PRU0_ARM_INTERRUPT+16 // fire interrupt
+  MOV   R31.B0, PRU0_ARM_INT+16 // fire interrupt
   WBS   R31.T30         // wait for response from ARM
   
   // TODO check parameters
