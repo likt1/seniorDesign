@@ -19,12 +19,12 @@
 #define adc_      r6
 #define fifo0data r7
 #define out_buff  r8
-#define locals    r9
+#define out_off   r9
+#define local     r10
 
-#define value     r10
-#define channel   r11
-#define ema       r12
-#define encoders  r13
+#define value     r11
+#define channel   r12
+#define local     r13
 #define cap_delay r14
 
 #define tmp0      r1
@@ -36,33 +36,60 @@
 // 1 word is 4 bytes
 
 START:
-  MOV adc_, ADC_BASE
-	MOV fifo0data, ADC_FIFO0DATA
-	MOV locals, 0
-  
-  
-  
-LEDON:
-  SET   R30.T3          // set the output pin (LED on)
-  MOV   r0, DELAY       // store the length of the delay in reg0
+  MOV   adc_, ADC_BASE
+  MOV   fifo0data, ADC_FIFO0DATA
+  MOV   locals, 0
 
-DELAYON:
-  SUB   R0, R0, 1       // decrement REG0 by 1
-  QBNE  DELAYON, R0, 0  // loop to DELAYON, unless REG0 = 0
+  LBBO  out_buff, locals, 0, 4
+  LBBO  cap_delay, locals, 0x20, 4
 
-LEDOFF:
-  CLR   R30.T3          // clear the output bin (LED off)
-  MOV   R0, DELAY       // reset REG0 to the length of delay
+  // Set up ADC
+  // Disable
+  LBBO  tmp0, adc_, CONTROL, 4
+  MOV   tmp1, 0x1
+  NOT   tmp1, tmp1
+  AND   tmp0, tmp0, tmp1
+  SBBO  tmp0, adc_, CONTROL, 4
 
-DELAYOFF:
-  SUB   R0, R0, 1       // dec REG0 by 1
-  QBNE  DELAYOFF, R0, 0 // loop to DELAYOFF, unless REG0 = 0
+  // Put ADC to full speed
+  MOV   tmp0, 0
+  SBBO  tmp0, adc_, SPEED, 4
+
+  // Configure STEPCONFIG reg for all 8 channels
+  MOV   tmp0, STEP1
+  MOV   tmp1, 0
+  MOV   tmp2, 0
+
+FILL_STEPS:
+  LSL   tmp3, tmp1, 19
+  SBBO  tmp3, adc_, tmp0, 4
+  ADD   tmp0, tmp0, 4
+  SBBO  tmp2, adc_, tmp0, 4
+  ADD   tmp1, tmp1, 1
+  ADD   tmp0, tmp0, 4
+  QBNE  FILL_STEPS, tmp1, 8
+
+  // Enable ADC with desired modes and make STEPCONFIG writable
+  LBBO  tmp0, adc_, CONTROL, 4
+  OR    tmp0, tmp0, 0x7
+  SBBO  tmp0, adc_, CONTROL, 4
+
+CAPTURE:
+  // check delay
+  QBNE  CAPTURE_DELAY, cap_delay, 0
+
+CPT_CONT:
+  MOV   tmp0, 0x1fe
+  SBBO  tmp0, adc_, STEPCONFIG, 4 // write to STEPCONFIG to trigger cap
+
+  SUB   tmp0, tmp0, 4
+  SBBO  tmp0, local, 0x14, 4 // HERERERERERERERERE
   
-// Notify flash to ARM
+
 NOTIFY:  
   MOV   R31.B0, PRU0_ARM_INT+16 // fire interrupt
   WBS   R31.T30         // wait for response from ARM
   
   // TODO check parameters
 
-  QBA   LEDON           // resume
+  QBA   NOTIFY          // resume

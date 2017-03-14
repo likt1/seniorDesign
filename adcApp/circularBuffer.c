@@ -33,6 +33,7 @@ void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
+  struct locals PRU_local;
   int r;
 
   // Allocate and init mem
@@ -57,9 +58,10 @@ void *pruThread (void *var) {
     return NULL;
   }
 
-  // Load memory debug
-  word load = 0x00000149;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &load, 2);
+  // Load memory
+  PRU_local.samples.addr = sizeof(locals);
+  PRU_local.samples.length = 44100;
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &PRU_local, sizeof(locals));
   if (r < 0) {
     printf("Failed to write memory block\n");
     prussdrv_exit();
