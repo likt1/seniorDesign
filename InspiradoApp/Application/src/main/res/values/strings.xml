@@ -13,10 +13,17 @@
     <string name="secure_connect">Connect a device - Secure</string>
     <string name="insecure_connect">Connect a device - Insecure</string>
     <string name="discoverable">Make discoverable</string>
+    <string name="about">About</string>
+
+    <string name="APP_KEY">1mqt8n70964mn8n</string>
+    <string name="APP_SECRET">3p9t99oz4i9cgg3</string>
+    <string name="sign_in">Connect with Dropbox</string>
+    <string name="dropbox_message">Inspirado uses Dropbox to store files</string>
+    <string name="title_activity_login">Sign in</string>
 
     <!--  DeviceListActivity -->
-    <string name="scanning">scanning for devices...</string>
-    <string name="select_device">select a device to connect</string>
+    <string name="scanning">Scanning for devices...</string>
+    <string name="select_device">Select a device to connect</string>
     <string name="none_paired">No devices have been paired</string>
     <string name="none_found">No devices found</string>
     <string name="title_paired_devices">Paired Devices</string>

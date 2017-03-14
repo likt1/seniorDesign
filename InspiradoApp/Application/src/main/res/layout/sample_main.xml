@@ -10,21 +10,23 @@
     <android.support.v4.view.ViewPager xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/pager"
-    android:layout_width="match_parent"
+    android:layout_width="wrap_content"
     android:layout_height="0dp"
-    android:layout_weight="1"
+    android:layout_weight="0.2"
     tools:context=".MainActivity" />
 
+    <!--This view is to draw a line between the elements in the linear layout. 0dp layout_height hides the line-->
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
+        android:layout_height="0dp"
         android:background="@android:color/darker_gray" />
 
     <FrameLayout
         android:id="@+id/sample_content_fragment"
         android:layout_weight="2"
         android:layout_width="match_parent"
-        android:layout_height="0px" />
+        android:layout_gravity="center_vertical"
+        android:layout_height="0dp" />
 
 </LinearLayout>
 <!-- END_INCLUDE (view_pager_layout) -->

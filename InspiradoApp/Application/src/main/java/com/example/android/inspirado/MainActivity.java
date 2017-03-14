@@ -4,6 +4,7 @@ import android.app.ActionBar;
 import android.app.FragmentTransaction;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
@@ -11,6 +12,7 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.support.v7.app.AppCompatActivity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -20,9 +22,12 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.dropbox.core.v2.users.FullAccount;
+
 import java.util.Locale;
 
-public class MainActivity extends FragmentActivity implements ActionBar.TabListener {
+
+public class MainActivity extends FragmentActivity implements ActionBar.TabListener{
 
     SectionsPagerAdapter mSectionsPagerAdapter;
     ViewPager mViewPager;
@@ -30,10 +35,13 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
     private boolean mLogShown;
     private final Handler handler = new Handler();
 
+    private static final int IMAGE_REQUEST_CODE = 101;
+    private String ACCESS_TOKEN;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Load the UI from res/layout/activity_main.xml
+        // Load the UI from res/layout/sample_main.xml
         setContentView(R.layout.sample_main);
 
         final ActionBar actionBar = getActionBar();
@@ -61,6 +69,17 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
                             .setText(mSectionsPagerAdapter.getPageTitle(i))
                             .setTabListener(this));
         }
+
+        if (!tokenExists()) {
+            //No token
+            //Back to LoginActivity
+            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+            startActivity(intent);
+        }
+
+        ACCESS_TOKEN = retrieveAccessToken();
+        Toast.makeText(this, ACCESS_TOKEN, Toast.LENGTH_LONG).show();
+
 
 
         android.support.v4.app.FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -318,6 +337,25 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
                                  Bundle savedInstanceState) {
             View rootView = inflater.inflate(R.layout.control, container, false);
             return rootView;
+        }
+    }
+
+    private boolean tokenExists() {
+        SharedPreferences prefs = getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+        String accessToken = prefs.getString("access-token", null);
+        return accessToken != null;
+    }
+
+
+    private String retrieveAccessToken() {
+        //check if ACCESS_TOKEN is previously stored on previous app launches
+        SharedPreferences prefs = getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+        String accessToken = prefs.getString("access-token", null);
+        if (accessToken == null) {
+            return null;
+        } else {
+            //accessToken already exists
+            return accessToken;
         }
     }
 
