@@ -5,7 +5,6 @@ import time
 import pdb
 
 import wifiScript as w 
-import encrypt as e
 
 server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
