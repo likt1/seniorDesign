@@ -27,6 +27,14 @@ struct configs {
   char timeRotary[CONFIG_SIZE];
 };
 
+/* bit data structure:
+0x00 0x00 00 00 00 | 07 addr
+  08   00 00 00 00 | 0F offset
+  10   00 00 00 00 | 17 length
+  18   00 00 00 00 | 1F cap_delay
+  20   00 00 00 00 | 27 timer
+  28   00 00 00 00 | 2F flags
+*/
 struct locals {
   struct samples {
     word addr;  // address of DDR memory bank
