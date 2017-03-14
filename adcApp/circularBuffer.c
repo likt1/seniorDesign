@@ -60,7 +60,11 @@ void *pruThread (void *var) {
 
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
-  PRU_local.samples.length = 44100;
+  PRU_local.samples.offset = 0;
+  PRU_local.samples.length = 13230; // 3 * 4410 or 3/10 a sec idealy
+  
+  PRU_local.cap_delay = 0;
+  PRU_local.timer = 0;
   r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to write memory block\n");
@@ -68,6 +72,7 @@ void *pruThread (void *var) {
     return NULL;
   }
 
+  printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
   prussdrv_exec_program(PRU_NUM, "adcSample.bin");
   // ===============================
@@ -154,7 +159,7 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 200;
+  int numEpochs = 500;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
@@ -181,7 +186,7 @@ void buffer (void) {
     strncpy(newConfig.compRotary, "\0", CONFIG_SIZE);
     
     if (file) {
-      printf("Config file detected...\n");
+      //printf("Config file detected...\n");
       while (!(fscanf(file, "%s", strBuf) == EOF)) {
         //printf("Entering loop: %s\n", strBuf);
         lbl = strtok(strBuf, delim); // Start of label

@@ -41,7 +41,7 @@ START:
   MOV   local, 0                    // local vars exist at 0 mem loc
 
   LBBO  out_buff, local, 0, 4       // word addr in locals
-  LBBO  cap_delay, local, 0x18, 4   // word cap_delay in locals
+  LBBO  cap_delay, local, 0x0c, 4   // word cap_delay in locals
 
   // Set up ADC
   // Disable first
@@ -88,7 +88,7 @@ SAMPLE:
   // Inc values while waiting
   ADD   length, length, 1           // inc length sampled
   MOV   tmp0, out_off               // inc out_offset while
-  ADD   out_off, out_off, 3         //   we wait
+  ADD   out_off, out_off, 2         //   we wait
   MOV   tmp1, 0xfff                 // init select reg for value
 
 WAIT_FOR_FIFO0:
@@ -100,9 +100,9 @@ READ_ALL_FIFO0:
   LSR   channel, value, 16          // extract channel from value
   AND   channel, channel, 0xf       // select last 4 bits from channel
   AND   value, value, tmp1          // select last 12 bits from value
-  SBBO  value, out_buff, tmp0, 3    // store value into out_buffer
+  SBBO  value, out_buff, tmp0, 2    // store value into out_buffer
 
-  LBBO  tmp0, local, 0x10, 4        // grab max size
+  LBBO  tmp0, local, 0x08, 4        // grab max size
   QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop
 
 NOTIFY:  

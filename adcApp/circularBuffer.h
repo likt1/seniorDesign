@@ -28,12 +28,12 @@ struct configs {
 };
 
 /* bit data structure:
-0x00 0x00 00 00 00 | 07 addr
-  08   00 00 00 00 | 0F offset
-  10   00 00 00 00 | 17 length
-  18   00 00 00 00 | 1F cap_delay
-  20   00 00 00 00 | 27 timer
-  28   00 00 00 00 | 2F flags
+0x00 0x00 00 00 00 | 03 addr
+  04   00 00 00 00 | 07 offset
+  08   00 00 00 00 | 0B length
+  0C   00 00 00 00 | 0F cap_delay
+  10   00 00 00 00 | 13 timer
+  14   00 00 00 00 | 17 flags
 */
 struct locals {
   struct {
