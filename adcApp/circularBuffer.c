@@ -59,9 +59,9 @@ void *pruThread (void *var) {
   }
 
   // Load memory
-  PRU_local.samples.addr = sizeof(locals);
+  PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.length = 44100;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &PRU_local, sizeof(locals));
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to write memory block\n");
     prussdrv_exit();

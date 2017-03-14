@@ -36,11 +36,11 @@ struct configs {
   28   00 00 00 00 | 2F flags
 */
 struct locals {
-  struct samples {
+  struct {
     word addr;  // address of DDR memory bank
     word offset;  // byte offset into local memory to capture for `scope mode
     word length;  // byte size of available DDR mem bank (non-zero triggers `scope capture)
-  };
+  } samples;
 
   word cap_delay;  // extra delay to control capture frequency
 

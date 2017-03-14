@@ -112,3 +112,10 @@ NOTIFY:
   // TODO check parameters
 
   QBA   INIT_CAPTURE                // resume
+
+CAPTURE_DELAY:
+  MOV   tmp0, cap_delay
+DELAY_LOOP:
+  SUB   tmp0, tmp0, 1
+  QBNE  DELAY_LOOP, tmp0, 0
+  JMP   SAMPLE
