@@ -1,20 +1,14 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <time.h>
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
 
-#define PRU_NUM 0 // Using PRU0
-#define SAMPLE_RATE 44100 // Set sample rate
-#define BUFFER_SIZE SAMPLE_RATE // DEBUG current buffer length is 1 sec
-#define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
+#include "circularBuffer.h"
 
-#define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
-
-typedef int bool; // Define bool
-#define true 1
-#define false 0
-
+// Init globals
 bool run = true;
 bool noop = false;
 bool save = false;
@@ -22,11 +16,13 @@ pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
-int sampleBuffer[BUFFER_SIZE];
+halfword *sampleBuffer;
+word PRU0RamAddrOff;
 
-unsigned int readFileVal(char filenm[]) {
+// Opens up file and parses value in hex
+word readFileVal(char filenm[]) {
   FILE* fp;
-  unsigned int value = 0;
+  word value = 0;
   fp = fopen(filenm, "rt");
   fscanf(fp, "%x", &value);
   fclose(fp);
@@ -37,8 +33,9 @@ void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
+  struct locals PRU_local;
   int r;
-  
+
   // Allocate and init mem
   r = prussdrv_init();
   if (r != 0) {
@@ -62,8 +59,9 @@ void *pruThread (void *var) {
   }
 
   // Load memory
-  unsigned int load = 0x0149;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &load, 2);
+  PRU_local.samples.addr = sizeof(locals);
+  PRU_local.samples.length = 44100;
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &PRU_local, sizeof(locals));
   if (r < 0) {
     printf("Failed to write memory block\n");
     prussdrv_exit();
@@ -83,12 +81,12 @@ void *pruThread (void *var) {
     printf("PRU returned, event number %d.\n", r);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     
-    // Write to buffer
+     // Write to buffer
     pthread_mutex_lock(&pruWrite);
     if (!noop) {
       int i;
       for (i = 0; i < 0; i++) { // For each sample in pru buffer
-        int sample = 0; // Get sample from pru buffer TODO HERE
+        halfword sample = 0; // Get sample from pru buffer TODO HERE
         sampleBuffer[next] = sample * 16;
         next++;
         if (next == BUFFER_SIZE) {
@@ -102,36 +100,40 @@ void *pruThread (void *var) {
       }
     }
     pthread_mutex_unlock(&pruWrite);
-    
+
     // Check to see if we should stop
     pthread_mutex_lock(&stop);
     if (!run) {
       break;
     }
     pthread_mutex_unlock(&stop);
-    
-    // Continue PRU sampling TODO
+
+    // Continue PRU sampling
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
   }
   // ===============================
-  
+
   // Disable PRU and close memory mappings
   prussdrv_pru_disable(PRU_NUM);
   prussdrv_exit();
-  
+
   printf("pru Thread stopped\n");
   return NULL;
 }
 
-void main (void) {
+void buffer (void) {
   printf("Circular Buffer program start\n");
-  
+
   // INIT
   // ===============================
   bool running = true;
-  bool footSwitch = false; // TODOM set defaults?
-  char timeRotary[CONFIG_SIZE] = "active";
+  struct configs curConfig; // TODOM set defaults?
+  curConfig.footSwitch = false;
+  strncpy(curConfig.timeRotary, "\0", CONFIG_SIZE);
+  strncpy(curConfig.compRotary, "\0", CONFIG_SIZE);
+  
+  struct timespec sleepTime = {0, 10000000}; // sleep for 10 ms
   
   // Init mutex
   if (pthread_mutex_init(&stop, NULL) != 0) {
@@ -152,17 +154,17 @@ void main (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 5000;
+  int numEpochs = 200;
   while (running) {
     if (numEpochs < 0) {
-       running = false; // DEBUG
+      running = false; // DEBUG
     }
     numEpochs--;
-    //save = true; // DEBUG
-    //int i; // DEBUG
-    //for (i = 0; i < BUFFER_SIZE; i++) {
-      //sampleBuffer[i] = 4095;
-    //} // DEBUG
+    // save = true; // DEBUG
+    /* int i; // DEBUG
+    for (i = 0; i < BUFFER_SIZE; i++) {
+      sampleBuffer[i] = 4095;
+    } // DEBUG */
     
     // Read config file and set values
     // Init file read vars
@@ -173,9 +175,10 @@ void main (void) {
     const char delim[2] = ":";
     
     // Init config file val vars
-    bool newFootSwitch = false;
-    char compRotary[CONFIG_SIZE] = "\0";
-    char newTimeRotary[CONFIG_SIZE] = "\0";
+    struct configs newConfig;
+    newConfig.footSwitch = false;
+    strncpy(newConfig.timeRotary, "\0", CONFIG_SIZE);
+    strncpy(newConfig.compRotary, "\0", CONFIG_SIZE);
     
     if (file) {
       printf("Config file detected...\n");
@@ -186,29 +189,37 @@ void main (void) {
 
         //printf("lbl: %s val: %s\n", lbl, val);
         if (strcmp(lbl, "CompRotary") == 0) {
-          strncpy(compRotary, val, CONFIG_SIZE);
+          strncpy(newConfig.compRotary, val, CONFIG_SIZE);
         }
         else if (strcmp(lbl, "TimeRotary") == 0) {
-          strncpy(newTimeRotary, val, CONFIG_SIZE);
+          strncpy(newConfig.timeRotary, val, CONFIG_SIZE);
         }
         else if (strcmp(lbl, "Footswitch") == 0) {
           if (strcmp(val, "True") == 0) {
-            newFootSwitch = true;
+            newConfig.footSwitch = true;
           }
         }
       }
       fclose(file); /*
-      printf("%s\n", compRotary);
-      printf("%s\n", newTimeRotary);
-      printf("%d\n", newFootSwitch);*/
+      printf("%s\n", newConfig.compRotary);
+      printf("%s\n", newConfig.timeRotary);
+      printf("%d\n", newConfig.footSwitch);*/
+    }
+    
+    // Check to see we got stuff
+    if (strlen(newConfig.timeRotary) == 0) {
+      printf("Empty new time rotary string!\n");
+    }
+    if (strlen(newConfig.compRotary) == 0) {
+      printf("Empty new comppression rotary string!\n");
     }
     
     // Block write thread to check for save switching?
     pthread_mutex_lock(&pruWrite);
     
     // Handle toggle of footswitch
-    if (newFootSwitch != footSwitch) {
-      if (start = -1 && strcmp(newTimeRotary, "active") == 0) { // If we are active and we are not started 
+    if (newConfig.footSwitch != curConfig.footSwitch) {
+      if (start = -1 && strcmp(newConfig.timeRotary, "active") == 0) { // If we are active and we are not started 
         start = next; // start active
       }
       else { // save buffer
@@ -217,7 +228,7 @@ void main (void) {
     }
     
     // Handle switching from active to retroactive if we are running
-    if (start > 0 && strcmp(newTimeRotary, timeRotary) != 0) {
+    if (start > 0 && strcmp(newConfig.timeRotary, curConfig.timeRotary) != 0) {
       //save = true; // saves sample
       start = -1; // stops active recording
     }
@@ -230,32 +241,35 @@ void main (void) {
       if (file) {
         // Set write head start
         if (start == -1) { // if passive get prev
-          if (strcmp(newTimeRotary, "30s") == 0) {
+          if (strcmp(newConfig.timeRotary, "30s") == 0) {
             start = next - 30*SAMPLE_RATE;
           }
-          else if (strcmp(newTimeRotary, "1m") == 0) {
+          else if (strcmp(newConfig.timeRotary, "1m") == 0) {
             start = next - 60*SAMPLE_RATE;
           }
-          else if (strcmp(newTimeRotary, "1m30s") == 0) {
+          else if (strcmp(newConfig.timeRotary, "1m30s") == 0) {
             start = next - 90*SAMPLE_RATE;
           }
-          else if (strcmp(newTimeRotary, "2m") == 0) {
+          else if (strcmp(newConfig.timeRotary, "2m") == 0) {
             start = next - 120*SAMPLE_RATE;
           }
-          else if (strcmp(newTimeRotary, "2m30s") == 0) {
+          else if (strcmp(newConfig.timeRotary, "2m30s") == 0) {
             start = next - 150*SAMPLE_RATE;
           }
           //else { // full 3 min
           if (start < 0) { // DEBUG MAX MINUTES ONLY
             start = next;
           }
-          // TODO handle negative number
+          
+          if (start < 0) { // Handle negative numbers
+            start += BUFFER_SIZE;
+          }
         }
       
         // Write until we meet next (end)
         do {
           // write to file TODOM improve one by one?
-          fwrite(&sampleBuffer[start], 2, 1, file); // one by one, find out a way to save all
+          fwrite(&sampleBuffer[start], sizeof(halfword), 1, file); // one by one, find out a way to save all
           //printf("%d\n%d\n", start, &sampleBuffer[start]);
           start++;
           if (start == BUFFER_SIZE) {
@@ -275,8 +289,10 @@ void main (void) {
     }
     pthread_mutex_unlock(&pruWrite);
     
-    footSwitch = newFootSwitch;
-    strncpy(timeRotary, newTimeRotary, CONFIG_SIZE);
+    curConfig.footSwitch = newConfig.footSwitch;
+    strncpy(curConfig.timeRotary, newConfig.timeRotary, CONFIG_SIZE);
+    strncpy(curConfig.compRotary, newConfig.compRotary, CONFIG_SIZE);
+    nanosleep(&sleepTime, NULL);
   }
   // ===============================
   
@@ -294,4 +310,18 @@ void main (void) {
   pthread_mutex_destroy(&stop);
   pthread_mutex_destroy(&pruWrite);
   printf("Circular Buffer program end\n");
+}
+
+void main (void) {
+  // Global init
+  sampleBuffer = malloc(sizeof(int) * BUFFER_SIZE);
+  if (!sampleBuffer) {
+    printf("mem alloc failed\n");
+  }
+  
+  PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
+
+  buffer();
+
+  free(sampleBuffer);
 }

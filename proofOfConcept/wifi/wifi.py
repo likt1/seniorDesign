@@ -64,7 +64,7 @@ def scanNetworks(log_file):
     i = 0
     for network_line in available_networks:
         # splice & clean the list of values
-        network_item = network_line.strip().split(" ")
+        network_item = network_line.strip().split("    ") # 4 spaces since ssids can have spaces...
         network_item = list(filter(('').__ne__, network_item))
         
         # this script only cares about wifi items...
@@ -81,18 +81,24 @@ def scanNetworks(log_file):
             security = 'wpa-psk'
         elif "ieee8021x" in network_item[-1]:
             security = 'peap'
-    
+        
+        item = network_item[0].split(" ") # split again, as this contains status / indentation
+
         # fill object accordingly
-        if (len(network_item) >= 3):
+        if (len(network_item) >= 2):
             # detect if connected via first string (i.e. "*AO" means connected)
-            status = network_item[0]
-            if('O' in status):
+            status = item[0]
+            if 'O' in status:
                 status = 'connected'
-            else:
+            elif 'A' in status:
                 status = 'available'
-            network_items.append(NetworkItem(i,status,network_item[1],network_item[2],security))
-        elif(len(network_item) >= 2):
-            network_items.append(NetworkItem(i,"not connected", network_item[0], network_item[1],security))
+            else:
+                status = 'not connected'
+            
+            if len(item) <= 1:
+                network_items.append(NetworkItem(i,status,network_item[0],network_item[1],security))
+            else:
+                network_items.append(NetworkItem(i,status," ".join(item[1:]),network_item[1],security))
         else:
             i -= 1
         i += 1
@@ -234,5 +240,4 @@ showNetworks(log_file, network_items)
 chosen_network = promptNetworks(log_file)
 if chosen_network != "":
     configureNetwork(log_file,chosen_network)
-
 log_file.close()
