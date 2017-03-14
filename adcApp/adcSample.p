@@ -1,4 +1,4 @@
-// PRU-ICSS program to flash a LED on P9_28 (pru0_pru_r30_3)
+// adc sampling PRU loop
 
 #define PRU0_ARM_INT  19 // allows notification of program compl
 
@@ -24,7 +24,7 @@
 
 #define value     r11
 #define channel   r12
-#define local     r13
+#define length    r13
 #define cap_delay r14
 
 #define tmp0      r1
@@ -36,15 +36,15 @@
 // 1 word is 4 bytes
 
 START:
-  MOV   adc_, ADC_BASE
-  MOV   fifo0data, ADC_FIFO0DATA
-  MOV   locals, 0
+  MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
+  MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
+  MOV   local, 0                    // local vars exist at 0 mem loc
 
-  LBBO  out_buff, locals, 0, 4
-  LBBO  cap_delay, locals, 0x20, 4
+  LBBO  out_buff, local, 0, 4       // word addr in locals
+  LBBO  cap_delay, local, 0x18, 4   // word cap_delay in locals
 
   // Set up ADC
-  // Disable
+  // Disable first
   LBBO  tmp0, adc_, CONTROL, 4
   MOV   tmp1, 0x1
   NOT   tmp1, tmp1
@@ -74,22 +74,41 @@ FILL_STEPS:
   OR    tmp0, tmp0, 0x7
   SBBO  tmp0, adc_, CONTROL, 4
 
-CAPTURE:
-  // check delay
-  QBNE  CAPTURE_DELAY, cap_delay, 0
+INIT_CAPTURE:
+  MOV   out_off, 0                  // reset offset
+  MOV   length, 0                   // reset length sampled
 
-CPT_CONT:
+BEG_CAPTURE:
+  QBNE  CAPTURE_DELAY, cap_delay, 0 // check delay
+
+SAMPLE:
   MOV   tmp0, 0x1fe
-  SBBO  tmp0, adc_, STEPCONFIG, 4 // write to STEPCONFIG to trigger cap
+  SBBO  tmp0, adc_, STEPCONFIG, 4   // write to STEPCONFIG to trigger cap
 
-  SUB   tmp0, tmp0, 4
-  SBBO  tmp0, local, 0x14, 4 // HERERERERERERERERE
-  
+  // Inc values while waiting
+  ADD   length, length, 1           // inc length sampled
+  MOV   tmp0, out_off               // inc out_offset while
+  ADD   out_off, out_off, 3         //   we wait
+  MOV   tmp1, 0xfff                 // init select reg for value
+
+WAIT_FOR_FIFO0:
+  LBBO  tmp2, adc_, FIFO0COUNT, 4   // load in FIFO0COUNT from adc_ loc
+  QBNE  WAIT_FOR_FIFO0, tmp2, 8     // loop if value from FIFO0COUNT doesn't eq 8
+
+READ_ALL_FIFO0:
+  LBBO  value, fifo0data, 0, 4      // take value from fifo0data
+  LSR   channel, value, 16          // extract channel from value
+  AND   channel, channel, 0xf       // select last 4 bits from channel
+  AND   value, value, tmp1          // select last 12 bits from value
+  SBBO  value, out_buff, tmp0, 3    // store value into out_buffer
+
+  LBBO  tmp0, local, 0x10, 4        // grab max size
+  QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop
 
 NOTIFY:  
-  MOV   R31.B0, PRU0_ARM_INT+16 // fire interrupt
-  WBS   R31.T30         // wait for response from ARM
+  MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
+  WBS   R31.T30                     // wait for response from ARM
   
   // TODO check parameters
 
-  QBA   NOTIFY          // resume
+  QBA   INIT_CAPTURE                // resume
