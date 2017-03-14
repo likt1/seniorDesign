@@ -16,10 +16,10 @@
 #define USB_MNT_LOC "/media/store/usb-drive/"
 #define MOUNT_MODE 1
 #define CHECK_MODE 0
+#define SPACE_REQUIREMENTS_IN_MB 30
 
 // prototypes for functionality
-int CopyToDevice(char* file_name, char* file_to_copy, char* device_name, char* mount_loc);
-int DeviceMountCheck(char* dev_name, char* mount_loc);
-int MountDevice(char* dev_name, char* mount_loc);
+int CopyToDevice(char* file_to_copy, char* device_name, char* mount_loc);
+int DeviceMountCheck(char* dev_name, char* mount_loc, int mode);
 int UnmountDevice(char* mount_loc);
-int CheckLowFileSpace(char* mount_loc);
+int CheckFileSpaceAvailable(char* mount_loc);
