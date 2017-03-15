@@ -9,7 +9,7 @@ count = 0
 debounce = False
 flag = 0
 currentSwitchState = 0
-temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\n" #set template
+temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:asdf\n" #set template
 
 def getIndex(val, length):
     return val%length
@@ -52,7 +52,7 @@ while True:
         temp = temp.replace("xx",settingsType[0])
         flag = 1
     
-    if (currentReading - prevRotaryReading1) > 10:
+    if (currentReading - prevRotaryReading2) > 10:
         idxType+=1
         temp = temp.replace(settingsType[getIndex((idxType-1),len(settingsType))],settingsType[getIndex(idxType,len(settingsType))]) # write to config
         prevRotaryReading2 = currentReading
@@ -64,8 +64,9 @@ while True:
         flag = 1
 
     # get latchswitch value for recording
-	
-	# read latchswitch as currentReading
+    target3 = open('/sys/class/gpio/gpio69/value' , 'r')
+    currentReading = int(target3.read())
+    target3.close()
 	
     if prevSwitchReading == -1: # if init, set previous as current
         prevSwitchReading = currentReading
