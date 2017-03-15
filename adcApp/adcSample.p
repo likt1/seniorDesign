@@ -108,7 +108,7 @@ READ_ALL_FIFO0:
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
   AND   value, value, tmp1          // select last 12 bits from value
   SBBO  value, out_buff, out_off, 4 // store value into out_buffer
-  ADD   out_off, out_off, 4         // inc array offset value
+  ADD   out_off, out_off, 2         // inc array offset value half to double store
 
   LBBO  tmp0, local, 0x08, 4        // grab max size
   QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop

@@ -33,7 +33,7 @@ struct configs {
   08   00 00 00 00 | 0B length
   0C   00 00 00 00 | 0F cap_delay
   10   00 00 00 00 | 13 timer
-  14   00 00 00 00 | 17 flags
+  14   00 00 00 00 | 17 flags flag check would be FEA51B1E
 */
 struct locals {
   struct {
