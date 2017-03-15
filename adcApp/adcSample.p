@@ -12,9 +12,6 @@
 #define STEPCONFIG    0x0054
 #define FIFO0COUNT    0x00e4
 
-.origin 0               // start of program in PRU memory
-.entrypoint START       // program entry point
-
 // Register allocations
 #define adc_      r6
 #define fifo0data r7
@@ -35,13 +32,24 @@
 
 // 1 word is 4 bytes
 
+.origin 0               // start of program in PRU memory
+.entrypoint START       // program entry point
+
 START:
+  LBCO r0, C4, 4, 4                 // Load in settings reg
+  CLR  r0, r0, 4                    // Clear bit 4 in setting
+  SBCO r0, C4, 4, 4                 // Restore
+
   MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
   MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
   MOV   local, 0                    // local vars exist at 0 mem loc
 
+  //LBBO tmp0, local, 0x14, 4         // eyecatcher check
+  //MOV  tmp1, 0xbeef1965
+  //QBNE QUIT, tmp0, tmp1
+
   LBBO  out_buff, local, 0, 4       // word addr in locals
-  LBBO  cap_delay, local, 0x0c, 4   // word cap_delay in locals
+  LBBO  cap_delay, local, 0xc, 4    // word cap_delay in locals
 
   // Set up ADC
   // Disable first
@@ -119,3 +127,12 @@ DELAY_LOOP:
   SUB   tmp0, tmp0, 1
   QBNE  DELAY_LOOP, tmp0, 0
   JMP   SAMPLE
+
+QUIT:
+// debug
+  MOV   tmp4, 0xbeef0010
+  SBBO  tmp4, local, 0x4, 4        // offset of local should be beef now
+  MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
+  WBS   R31.T30                     // wait for response from ARM
+  HALT
+// debug

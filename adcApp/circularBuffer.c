@@ -65,6 +65,7 @@ void *pruThread (void *var) {
   
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
+  PRU_local.flags = 0;
   r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to write memory block\n");
@@ -74,14 +75,19 @@ void *pruThread (void *var) {
 
   printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
-  prussdrv_exec_program(PRU_NUM, "adcSample.bin");
+  r = prussdrv_exec_program(PRU_NUM, "adcSample.bin");
+  if (r < 0) {
+    printf("Failed to execute PRU program on PRU%d\n", PRU_NUM);
+    prussdrv_exit();
+    return NULL;
+  }
   // ===============================
 
   // MAIN PRU LOOP
   // ===============================
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
-    //printf("Waiting for PRU\n");
+    printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
