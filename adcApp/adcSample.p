@@ -94,7 +94,7 @@ SAMPLE:
   SBBO  tmp0, adc_, STEPCONFIG, 4   // write to STEPCONFIG to trigger cap
 
   // Inc values while waiting
-  ADD   length, length, 1           // inc length sampled
+  ADD   length, length, 2           // inc length sampled
   MOV   tmp1, 0xfff                 // init select reg for value
 
 WAIT_FOR_FIFO0:
@@ -107,8 +107,9 @@ READ_ALL_FIFO0:
   AND   channel, channel, 0xf       // select last 4 bits from channel
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
   AND   value, value, tmp1          // select last 12 bits from value
+  MOV   value, 0xbeef // debug
   SBBO  value, out_buff, out_off, 4 // store value into out_buffer
-  ADD   out_off, out_off, 4         // inc array offset value
+  ADD   out_off, out_off, 2         // inc array offset value half to double store
 
   LBBO  tmp0, local, 0x08, 4        // grab max size
   QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop
