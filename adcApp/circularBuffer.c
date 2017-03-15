@@ -61,7 +61,7 @@ void *pruThread (void *var) {
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
-  PRU_local.samples.length = 13230; // 3 * 4410 or 3/10 a sec idealy
+  PRU_local.samples.length = 4410; // 3 * 4410 or 3/10 a sec idealy
   
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
@@ -121,7 +121,7 @@ void *pruThread (void *var) {
 
     // Continue PRU sampling
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
+//    prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
   }
   // ===============================
 

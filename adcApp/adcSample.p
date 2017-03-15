@@ -39,7 +39,7 @@ START:
   LBCO r0, C4, 4, 4                 // Load in settings reg
   CLR  r0, r0, 4                    // Clear bit 4 in setting
   SBCO r0, C4, 4, 4                 // Restore
-
+  
   MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
   MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
   MOV   local, 0                    // local vars exist at 0 mem loc
@@ -95,8 +95,6 @@ SAMPLE:
 
   // Inc values while waiting
   ADD   length, length, 1           // inc length sampled
-  MOV   tmp0, out_off               // inc out_offset while
-  ADD   out_off, out_off, 2         //   we wait
   MOV   tmp1, 0xfff                 // init select reg for value
 
 WAIT_FOR_FIFO0:
@@ -107,8 +105,10 @@ READ_ALL_FIFO0:
   LBBO  value, fifo0data, 0, 4      // take value from fifo0data
   LSR   channel, value, 16          // extract channel from value
   AND   channel, channel, 0xf       // select last 4 bits from channel
+  QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
   AND   value, value, tmp1          // select last 12 bits from value
-  SBBO  value, out_buff, tmp0, 2    // store value into out_buffer
+  SBBO  value, out_buff, out_off, 4 // store value into out_buffer
+  ADD   out_off, out_off, 4         // inc array offset value
 
   LBBO  tmp0, local, 0x08, 4        // grab max size
   QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop
@@ -116,10 +116,9 @@ READ_ALL_FIFO0:
 NOTIFY:  
   MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
   WBS   R31.T30                     // wait for response from ARM
-  
+  CLR   R31.T30                     // clear response
   // TODO check parameters
-
-  QBA   INIT_CAPTURE                // resume
+  JMP   INIT_CAPTURE                // resume
 
 CAPTURE_DELAY:
   MOV   tmp0, cap_delay
@@ -130,7 +129,7 @@ DELAY_LOOP:
 
 QUIT:
 // debug
-  MOV   tmp4, 0xbeef0010
+  MOV   tmp4, value
   SBBO  tmp4, local, 0x4, 4        // offset of local should be beef now
   MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
   WBS   R31.T30                     // wait for response from ARM
