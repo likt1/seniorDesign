@@ -35,6 +35,9 @@ void *pruThread (void *var) {
   printf("pru Thread active\n");
   struct locals PRU_local;
   int r;
+  FILE fd;
+  void *map_base, *virt_addr; 
+  off_t buffLoc = PRU0RamAddrOff + 0x18;
 
   // Allocate and init mem
   r = prussdrv_init();
@@ -61,8 +64,7 @@ void *pruThread (void *var) {
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
-  PRU_local.samples.length = 4410; // 3 * 4410 or 3/10 a sec idealy
-  
+  PRU_local.samples.length = 7950; // 8000 is 16kb so just a bit lower than that
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
   PRU_local.flags = 0;
@@ -87,7 +89,7 @@ void *pruThread (void *var) {
   // ===============================
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
-    printf("Waiting for PRU\n");
+    //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -97,7 +99,19 @@ void *pruThread (void *var) {
     if (!noop) {
       int i;
       for (i = 0; i < 0; i++) { // For each sample in pru buffer
-        halfword sample = 0; // Get sample from pru buffer TODO HERE
+        halfword sample = 0; // Init sample
+        fd = open("/dev/mem", O_RD | O_SYNC)
+        if (fd == -1) {
+          printf("Failed to open ram to fetch adc values");
+        }
+        map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buffLoc & ~MAP_MASK);
+        if (map_base == (void *) -1) {
+          printf("Failed to map memory when accessing ram");
+        }
+        virt_addr = map_base + (target & MAP_MASK);
+        sample = *((halfword *) virt_addr);
+        
+         // Get sample from pru buffer TODO HERE
         sampleBuffer[next] = sample * 16;
         next++;
         if (next == BUFFER_SIZE) {
@@ -121,7 +135,6 @@ void *pruThread (void *var) {
 
     // Continue PRU sampling
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
-//    prussdrv_pru_clear_event(PRU_EVTOUT_0, ARM_PRU0_INTERRUPT);
   }
   // ===============================
 
