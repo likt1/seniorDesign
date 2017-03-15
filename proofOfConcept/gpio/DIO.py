@@ -18,14 +18,14 @@ while True:
 
     # get rotary value for retro-Time/Active
     
-    target = open('/sys/devices/platform/ocp/48304000.epwmss/48304180.eqep/position', 'r')
+    target = open('/sys/devices/platform/ocp/48300000.epwmss/48300180.eqep/position', 'r')
     currentReading = int(target.read())
     target.close()
 
     if prevRotaryReading1 == -500000: # if init, set previous as current
         prevRotaryReading1 = currentReading
         idxTime = 3
-        temp = temp.replace("yy",settingsType[3])
+        temp = temp.replace("yy",settingsTime[3])
         flag = 1
     
     if (currentReading - prevRotaryReading1) > 10:
@@ -42,9 +42,9 @@ while True:
     
     # get rotary value for compression type
     
-    target = open('/sys/devices/platform/ocp/48304000.epwmss/48304180.eqep/position' , 'r')
-    currentReading = int(target.read())
-    target.close()
+    target2 = open('/sys/devices/platform/ocp/48304000.epwmss/48304180.eqep/position' , 'r')
+    currentReading = int(target2.read())
+    target2.close()
 
     if prevRotaryReading2 == -500000: # if init, set previous as current
         prevRotaryReading2 = currentReading
