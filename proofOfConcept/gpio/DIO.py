@@ -30,12 +30,12 @@ while True:
     
     if (currentReading - prevRotaryReading1) > 10:
         idxTime+=1
-        temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
+        temp = temp.replace(settingsTime[getIndex((idxTime-1),len(settingsTime))],settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
         prevRotaryReading1 = currentReading
         flag = 1
     elif (prevRotaryReading1 - currentReading) > 10:
         idxTime-=1
-        temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
+        temp = temp.replace(settingsTime[getIndex((idxTime+1),len(settingsTime))],settingsTime[getIndex(idxTime,len(settingsTime))]) # write to config
         prevRotaryReading1 = currentReading
         flag = 1
     
@@ -54,16 +54,19 @@ while True:
     
     if (currentReading - prevRotaryReading1) > 10:
         idxType+=1
-        temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))]) # write to config
+        temp = temp.replace(settingsType[getIndex((idxType-1),len(settingsType))],settingsType[getIndex(idxType,len(settingsType))]) # write to config
         prevRotaryReading2 = currentReading
         flag = 1
     elif (prevRotaryReading2 - currentReading) > 10:
         idxType-=1
-        temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))]) # write to config
+        temp = temp.replace(settingsType[getIndex((idxType+1),len(settingsType))],settingsType[getIndex(idxType,len(settingsType))]) # write to config
         prevRotaryReading2 = currentReading
         flag = 1
 
     # get latchswitch value for recording
+	
+	# read latchswitch as currentReading
+	
     if prevSwitchReading == -1: # if init, set previous as current
         prevSwitchReading = currentReading
         currentSwitchState = False
@@ -77,8 +80,8 @@ while True:
     elif debounce == True and prevSwitchReading == currentReading:
         count +=1 #debouncing
         if count == 5:
-            currentSwitchState = not currentSwitchState # write to config
-            temp = temp.replace("zz",str(currentSwitchState))
+            currentSwitchState = not currentSwitchState
+            temp = temp.replace(str(not currentSwitchState),str(currentSwitchState))  # write to config
             count = 0
             debounce = False
             flag = 1
