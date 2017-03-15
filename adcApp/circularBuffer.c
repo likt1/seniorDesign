@@ -33,6 +33,7 @@ void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
+  struct locals PRU_local;
   int r;
 
   // Allocate and init mem
@@ -57,24 +58,36 @@ void *pruThread (void *var) {
     return NULL;
   }
 
-  // Load memory debug
-  word load = 0x00000149;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, &load, 2);
+  // Load memory
+  PRU_local.samples.addr = sizeof(PRU_local);
+  PRU_local.samples.offset = 0;
+  PRU_local.samples.length = 13230; // 3 * 4410 or 3/10 a sec idealy
+  
+  PRU_local.cap_delay = 0;
+  PRU_local.timer = 0;
+  PRU_local.flags = 0;
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to write memory block\n");
     prussdrv_exit();
     return NULL;
   }
 
+  printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
-  prussdrv_exec_program(PRU_NUM, "adcSample.bin");
+  r = prussdrv_exec_program(PRU_NUM, "adcSample.bin");
+  if (r < 0) {
+    printf("Failed to execute PRU program on PRU%d\n", PRU_NUM);
+    prussdrv_exit();
+    return NULL;
+  }
   // ===============================
 
   // MAIN PRU LOOP
   // ===============================
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
-    //printf("Waiting for PRU\n");
+    printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -152,7 +165,7 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 200;
+  int numEpochs = 500;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
@@ -179,7 +192,7 @@ void buffer (void) {
     strncpy(newConfig.compRotary, "\0", CONFIG_SIZE);
     
     if (file) {
-      printf("Config file detected...\n");
+      //printf("Config file detected...\n");
       while (!(fscanf(file, "%s", strBuf) == EOF)) {
         //printf("Entering loop: %s\n", strBuf);
         lbl = strtok(strBuf, delim); // Start of label

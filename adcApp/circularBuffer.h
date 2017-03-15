@@ -27,19 +27,25 @@ struct configs {
   char timeRotary[CONFIG_SIZE];
 };
 
-typedef struct {
-	word eyecatcher;			// eyecacher (for sanity checks)
-	word timer;					// timer: counts number of ADC reads
-	word flags;					// runtime flags. write 1 to exit capture loop
-	
-	struct {
-		word addr;				// address of DDR memory bank
-		word offset;			// byte offset into local memory to capture for `scope mode
-		word length;			// byte size of available DDR mem bank (non-zero triggers `scope capture)
-	} scope;
-	
-	word cap_delay;				// extra delay to control capture frequency
-	
-} locals;
+/* bit data structure:
+0x00 0x00 00 00 00 | 03 addr
+  04   00 00 00 00 | 07 offset
+  08   00 00 00 00 | 0B length
+  0C   00 00 00 00 | 0F cap_delay
+  10   00 00 00 00 | 13 timer
+  14   00 00 00 00 | 17 flags
+*/
+struct locals {
+  struct {
+    word addr;  // address of DDR memory bank
+    word offset;  // byte offset into local memory to capture for `scope mode
+    word length;  // byte size of available DDR mem bank (non-zero triggers `scope capture)
+  } samples;
+
+  word cap_delay;  // extra delay to control capture frequency
+
+  word timer; // counts number of ADC reads
+  word flags; // runtime flags
+};
 
 #endif

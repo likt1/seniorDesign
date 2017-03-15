@@ -174,7 +174,7 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     # based on selected security, (local only) prompt for username / password...
     if not passphrase and not network_id:
         if "peap" in selected_network.security:
-            networkId = input("please enter your network identity (dont care for single_auth networks): ");
+            network_id = input("please enter your network identity (dont care for single_auth networks): ");
         if "open" not in selected_network.security:
             passPhrase = input("please enter your passphrase: ");
     
@@ -204,7 +204,7 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
         config_content = peap_template
         if "peap" not in selected_network.security:
             config_content = single_auth_template
-        config_content = config_content.replace("<NETID>",networkId)
+        config_content = config_content.replace("<NETID>",network_id)
         config_content = config_content.replace("<PASSPHRASE>",passPhrase)
         config_content = config_content.replace("<SERVICEKEY>",selected_network.serviceKey)
         config_content = config_content.replace("<SSID>",selected_network.ssid)

@@ -60,3 +60,6 @@ VM/.vagrant/*
 # Python
 **/__pycache__/*
 
+# adc
+**/*.bin
+**/circularBuffer

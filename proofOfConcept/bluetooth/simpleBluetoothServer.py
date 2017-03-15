@@ -2,10 +2,11 @@
 import bluetooth
 import json
 import time
+import dropbox
+
 import pdb
 
 import wifiScript as w 
-import encrypt as e
 
 server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
@@ -54,7 +55,7 @@ def connectToNetwork(parameters):
     # network_item = w.NetworkItem("2","not connected","ZyXEL24474","wifi_88532ee764bd_5a7958454c3234343734_managed_psk","wpa-psk")
     
     print("[!] PARAMETERS [%s]" % parameters)
-    network_item = w.NetworkItem(parameters['id'],parameters['status'], parameters['ssid'], parameters['serviceKey'], parameters['security'])
+    network_item = w.NetworkItem(parameters['id'],parameters['status'], parameters['ssid'], parameters['serviceKey'], parameters['security'], parameters['username'])
     log_file = open("log","a")
     w.configureNetwork(log_file, network_item)
 
@@ -65,10 +66,8 @@ def defaultReply():
 
 while True:
     print("Waiting for a connection...")
-    client_sock,address = server_sock.accept()
     
     try: 
-        print("Waiting for a connection...")
         client_sock,address = server_sock.accept()
         print("[!] Accepted connection from ",address)
         greeting = b"\x41\x43\x4B"                  #Send ACK to acknowledge connection
