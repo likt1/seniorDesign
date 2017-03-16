@@ -106,6 +106,7 @@ READ_ALL_FIFO0:
   LSR   channel, value, 16          // extract channel from value
   AND   channel, channel, 0xf       // select last 4 bits from channel
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
+  MOV   value, 0xfff // DEBUG
   AND   value, value, tmp1          // select last 12 bits from value
   SBBO  value, out_buff, out_off, 4 // store value into out_buffer
   ADD   out_off, out_off, 2         // inc array offset value half to double store
