@@ -119,7 +119,7 @@ void *pruThread (void *var) {
           virt_addr = map_base + (buffOff & MAP_MASK);
           sample = *((halfword *) virt_addr);
           if (sample != 0xfff) { //DEBUG
-            printf("Debug failed at access:0x%X sample:0x%X\n", buffOff, sample);
+            printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
           }
         }
      
