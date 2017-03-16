@@ -1,4 +1,7 @@
-import os.path
+import subprocess
+import os
+
+sd_loc = "/media/store/sd-card"
 
 prevRotaryReading1 = -500000 # arbitrary init val
 prevRotaryReading2 = -500000
@@ -15,6 +18,8 @@ activeReady = False # will be set when in Active Mode
 activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
 activeCount = 0
 currentSwitchState = 0
+flagSD = -1
+
 temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
 
 # TODO: enhance to support MemoryLow and IsRecording...
@@ -116,12 +121,12 @@ while True:
         temp = temp.replace("bb","No") # write to config
         flag = 1
     
-    if settingsTime[getIndex(idxTime,len(settingsTime))] == "active" and activeReady == False
+    if settingsTime[getIndex(idxTime,len(settingsTime))] == "active" and activeReady == False:
         activeReady = True
         activeSwitch = currentSwitchState
         
-    elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True
-        if recordingFlag == 1
+    elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True:
+        if recordingFlag == 1:
             recordingFlag = 0
             temp = temp.replace("Yes","No") # write to config
             activeCount = 0
@@ -129,13 +134,13 @@ while True:
             flag = 1
         activeReady = False
         
-    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 0
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 0:
         recordingFlag = 1
         temp = temp.replace("No","Yes") # write to config
         activeSwitch = currentSwitchState
         flag = 1
     
-    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 1
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 1:
         recordingFlag = 0
         temp = temp.replace("Yes","No") # write to config
         activeSwitch = currentSwitchState
@@ -143,9 +148,9 @@ while True:
         # Set Recording LED to solid ON
         flag = 1
 
-    elif recordingFlag == 1
+    elif recordingFlag == 1:
         activeCount += 1
-        if activeCount >= 50  # number subject to change
+        if activeCount >= 50:  # number subject to change
             #Blink Recording LED
             activeCount = 0
 
@@ -153,6 +158,35 @@ while True:
     # check if we have low sd-card memory (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
 
+	if flagSD == -1:
+	    flagSD = 0
+	    temp = temp.replace("aa","Open Memory") # write to config
+	
+	if os.path.ismount(sd_loc):
+        #print("discovered sd card")
+
+        df = subprocess.Popen(["df", sd_loc], stdout=subprocess.PIPE)
+
+        output = df.communicate()[0]
+
+        device, size, used, available, percent, mountpoint = \
+            output.decode("UTF-8").split("\n")[1].split()
+
+        # uncomment to audit df return
+        #print(device, size, used, available, percent, mountpoint)
+
+        if int(available) < 300000 and flagSD == 0:
+            #print("warn the user, space available (in sd card) is below 30MB")
+			flagSD = 1
+			temp = temp.replace("Open Memory","Low Memory") # write to 
+			flag = 1
+			
+        elif int(available) >= 300000 and flagSD == 1:
+            #print("space available is fine (for sd card)")
+			flagSD = 0
+			temp = temp.replace("Low Memory","Open Memory") # write to config
+			flag = 1
+	
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')
