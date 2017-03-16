@@ -158,11 +158,11 @@ while True:
     # check if we have low sd-card memory (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
 
-	if flagSD == -1:
-	    flagSD = 0
-	    temp = temp.replace("aa","Open Memory") # write to config
-	
-	if os.path.ismount(sd_loc):
+    if flagSD == -1:
+        flagSD = 0
+        temp = temp.replace("aa","Open Memory") # write to config
+    
+    if os.path.ismount(sd_loc):
         #print("discovered sd card")
 
         df = subprocess.Popen(["df", sd_loc], stdout=subprocess.PIPE)
@@ -177,16 +177,16 @@ while True:
 
         if int(available) < 300000 and flagSD == 0:
             #print("warn the user, space available (in sd card) is below 30MB")
-			flagSD = 1
-			temp = temp.replace("Open Memory","Low Memory") # write to 
-			flag = 1
-			
+            flagSD = 1
+            temp = temp.replace("Open Memory","Low Memory") # write to 
+            flag = 1
+            
         elif int(available) >= 300000 and flagSD == 1:
             #print("space available is fine (for sd card)")
-			flagSD = 0
-			temp = temp.replace("Low Memory","Open Memory") # write to config
-			flag = 1
-	
+            flagSD = 0
+            temp = temp.replace("Low Memory","Open Memory") # write to config
+            flag = 1
+    
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')
