@@ -1,3 +1,5 @@
+import os.path
+
 prevRotaryReading1 = -500000 # arbitrary init val
 prevRotaryReading2 = -500000
 prevSwitchReading = -1
@@ -9,7 +11,7 @@ count = 0
 debounce = False
 flag = 0
 currentSwitchState = 0
-temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording::bb\n" #set template
+temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
 
 # TODO: enhance to support MemoryLow and IsRecording...
 
@@ -18,8 +20,20 @@ def getIndex(val, length):
 
 while True:
 
-    # get rotary value for retro-Time/Active
+    # check file for previous settings (allows phone app to also modify...)    
+    if os.path.isfile("/root/conf/DIO.config")
+        f = open(settings_file,'r')
+        settings = f.readlines()
+        prevRotaryReading2 = settings[0].split(":",1)[1].strip() # compression
+        prevRotaryReading1 = settings[1].split(":",1)[1].strip() # time
+        prev_warning = settings[3].split(":",1)[1].strip()
+        prev_active = settings[4].split(":",1)[1].strip()
+        # ensure good indices
+        idxTime = settingsTime.index(prevRotaryReading2)
+        idxType = settingsType.index(prevRotaryReading1)
+        f.close()
     
+    # get rotary value for retro-Time/Active
     target = open('/sys/devices/platform/ocp/48300000.epwmss/48300180.eqep/position', 'r')
     currentReading = int(target.read())
     target.close()
@@ -88,6 +102,15 @@ while True:
             count = 0
             debounce = False
             flag = 1
+
+    # check if we are actively recording (need to blink)
+    # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
+    #if 
+
+
+    # check if we have low sd-card memory (need to blink)
+    # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
+
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')
