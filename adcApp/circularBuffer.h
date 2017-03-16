@@ -21,6 +21,9 @@ typedef char bool; // Define bool
 #define true 1
 #define false 0
 
+#define MAP_SIZE 4096UL
+#define MAP_MASK (MAP_SIZE - 1)
+
 struct configs {
   bool footSwitch;
   char compRotary[CONFIG_SIZE];

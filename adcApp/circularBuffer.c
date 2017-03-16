@@ -5,6 +5,8 @@
 #include <time.h>
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
+#include <sys/mman.h>
+#include <fcntl.h>
 
 #include "circularBuffer.h"
 
@@ -35,9 +37,6 @@ void *pruThread (void *var) {
   printf("pru Thread active\n");
   struct locals PRU_local;
   int r;
-  FILE fd;
-  void *map_base, *virt_addr; 
-  off_t buffLoc = PRU0RamAddrOff + 0x18;
 
   // Allocate and init mem
   r = prussdrv_init();
@@ -75,7 +74,7 @@ void *pruThread (void *var) {
     return NULL;
   }
 
-  printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
+  //printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
   r = prussdrv_exec_program(PRU_NUM, "adcSample.bin");
   if (r < 0) {
@@ -87,7 +86,9 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-  while (true) {
+  int run = 2;
+  while (run > 0) {
+    run--;
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
@@ -98,20 +99,35 @@ void *pruThread (void *var) {
     pthread_mutex_lock(&pruWrite);
     if (!noop) {
       int i;
-      for (i = 0; i < 0; i++) { // For each sample in pru buffer
-        halfword sample = 0; // Init sample
-        fd = open("/dev/mem", O_RD | O_SYNC)
-        if (fd == -1) {
-          printf("Failed to open ram to fetch adc values");
+      halfword sample = 0; // Init sample var
+      bool mapAccess = true;
+      int fd = open("/dev/mem", O_RDONLY | O_SYNC);
+      void *map_base, *virt_addr; 
+      off_t buffLoc = PRU0RamAddrOff + PRU_local.samples.addr;
+      if (fd == -1) {
+        printf("Failed to open ram to fetch adc values.\n");
+        mapAccess = false;
+      }
+      for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
+        // Get sample
+        off_t buffOff = buffLoc + i*2;
+       if (buffOff % 0x1000 == 0 || i == 0) {
+          map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, buffOff & ~MAP_MASK);
+          if (map_base == (void *) -1) {
+            printf("Failed to map memory when accessing ram 0x%X.\n", buffOff);
+            mapAccess = false;
+          }
         }
-        map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buffLoc & ~MAP_MASK);
-        if (map_base == (void *) -1) {
-          printf("Failed to map memory when accessing ram");
-        }
-        virt_addr = map_base + (target & MAP_MASK);
-        sample = *((halfword *) virt_addr);
         
-         // Get sample from pru buffer TODO HERE
+        if (mapAccess) {
+          virt_addr = map_base + (buffOff & MAP_MASK);
+          sample = *((halfword *) virt_addr);
+          if (sample != 0xfff || true) { //DEBUG
+            printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+          }
+        }
+     
+        // Upscale to 16bit from 12bit
         sampleBuffer[next] = sample * 16;
         next++;
         if (next == BUFFER_SIZE) {
@@ -122,6 +138,9 @@ void *pruThread (void *var) {
           noop = true;
           break;
         }
+      }
+      if (fd) {
+        close(fd);
       }
     }
     pthread_mutex_unlock(&pruWrite);
@@ -178,17 +197,15 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 500;
+  int numEpochs = 15;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
     }
+    if (numEpochs == 5) {
+      save = true;
+    }
     numEpochs--;
-    // save = true; // DEBUG
-    /* int i; // DEBUG
-    for (i = 0; i < BUFFER_SIZE; i++) {
-      sampleBuffer[i] = 4095;
-    } // DEBUG */
     
     // Read config file and set values
     // Init file read vars
