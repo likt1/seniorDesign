@@ -110,12 +110,15 @@ void *pruThread (void *var) {
       for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
         // Get sample
         off_t buffOff = buffLoc + i*2;
-        map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buffOff & ~MAP_MASK);
-        if (map_base == (void *) -1) {
-          printf("Failed to map memory when accessing ram 0x%X.\n", buffOff);
-          mapAccess = false;
+        if (buffOff % 1000 == 0 || i == 0) {
+          map_base = mmap(0, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, buffOff & ~MAP_MASK);
+          if (map_base == (void *) -1) {
+            printf("Failed to map memory when accessing ram 0x%X.\n", buffOff);
+            mapAccess = false;
+          }
         }
-        else {
+        
+        if (mapAccess) {
           virt_addr = map_base + (buffOff & MAP_MASK);
           sample = *((halfword *) virt_addr);
           if (sample != 0xfff) { //DEBUG
