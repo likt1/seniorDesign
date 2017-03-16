@@ -86,6 +86,26 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
+  void *map_bases[4];
+  bool mapAccess = true;
+  int fd = open("/dev/mem", O_RDONLY | O_SYNC);
+  if (fd == -1) {
+    printf("Failed to open ram to fetch adc values.\n");
+    mapAccess = false;
+  }
+  int j;
+  off_t mapLoc;
+  for (j = 0; j < 4 && mapAccess, j++) {
+    mapLoc = PRU0RamAddrOff + PRU_local.samples.addr + 0x1000*j;
+    map_bases[j] = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+    if (map_bases[j] == (void *) -1) {
+      printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
+      mapAccess = false;
+      break;
+    }
+  }
+  j = 0;
+  
   int run = 2;
   while (run > 0) {
     run--;
@@ -100,29 +120,20 @@ void *pruThread (void *var) {
     if (!noop) {
       int i;
       halfword sample = 0; // Init sample var
-      bool mapAccess = true;
-      int fd = open("/dev/mem", O_RDONLY | O_SYNC);
-      void *map_base, *virt_addr; 
-      off_t buffLoc = PRU0RamAddrOff + PRU_local.samples.addr;
-      if (fd == -1) {
-        printf("Failed to open ram to fetch adc values.\n");
-        mapAccess = false;
-      }
+      void *virt_addr; 
+      
       for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
         // Get sample
-        off_t buffOff = buffLoc + i*2;
-       if (buffOff % 0x1000 == 0 || i == 0) {
-          map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, buffOff & ~MAP_MASK);
-          if (map_base == (void *) -1) {
-            printf("Failed to map memory when accessing ram 0x%X.\n", buffOff);
-            mapAccess = false;
-          }
+        off_t buffOff = (PRU_local.samples.addr + i*2) % MAP_SIZE;
+        
+        if (buffOff == 0 && i != 0) {
+          j++;
         }
         
         if (mapAccess) {
-          virt_addr = map_base + (buffOff & MAP_MASK);
+          virt_addr = map_bases[j] + buffOff;
           sample = *((halfword *) virt_addr);
-          if (sample != 0xfff || true) { //DEBUG
+          if (sample != 0xfff) { //DEBUG
             printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
           }
         }
