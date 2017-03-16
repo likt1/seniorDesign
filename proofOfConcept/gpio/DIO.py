@@ -9,7 +9,9 @@ count = 0
 debounce = False
 flag = 0
 currentSwitchState = 0
-temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:asdf\n" #set template
+temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording::bb\n" #set template
+
+# TODO: enhance to support MemoryLow and IsRecording...
 
 def getIndex(val, length):
     return val%length
