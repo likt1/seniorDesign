@@ -10,7 +10,7 @@ typedef uint16_t halfword;  // 16bit
 typedef uint8_t byte;       // 8bit
 
 #define PRU_NUM 0 // Using PRU0
-#define SAMPLE_RATE 44100 // Set sample rate
+#define SAMPLE_RATE 100 // Set sample rate
 #define BUFFER_LENGTH 30 // DEBUG length is 30 sec
 #define BUFFER_SIZE (SAMPLE_RATE*BUFFER_LENGTH) // Set buffer size
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0

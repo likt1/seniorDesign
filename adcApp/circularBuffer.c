@@ -95,20 +95,18 @@ void *pruThread (void *var) {
   }
   int j;
   off_t mapLoc;
-  for (j = 0; j < 4 && mapAccess, j++) {
-    mapLoc = PRU0RamAddrOff + PRU_local.samples.addr + 0x1000*j;
-    map_bases[j] = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+  for (j = 0; j < 4 && mapAccess; j++) {
+    mapLoc = PRU0RamAddrOff + 0x1000*j;
+    map_bases[j] = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc & ~MAP_MASK);
     if (map_bases[j] == (void *) -1) {
       printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
       mapAccess = false;
       break;
     }
   }
-  j = 0;
   
-  int run = 2;
-  while (run > 0) {
-    run--;
+  while (true) {
+    j = 0; // RESET MEMORY MAP INDEX
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
@@ -126,12 +124,13 @@ void *pruThread (void *var) {
         // Get sample
         off_t buffOff = (PRU_local.samples.addr + i*2) % MAP_SIZE;
         
+        // Move to next map if we are on the start of a map split
         if (buffOff == 0 && i != 0) {
           j++;
         }
         
-        if (mapAccess) {
-          virt_addr = map_bases[j] + buffOff;
+        if (mapAccess) { // Grab sample
+          virt_addr = map_bases[j] + (buffOff & MAP_MASK);
           sample = *((halfword *) virt_addr);
           if (sample != 0xfff) { //DEBUG
             printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
@@ -150,9 +149,6 @@ void *pruThread (void *var) {
           break;
         }
       }
-      if (fd) {
-        close(fd);
-      }
     }
     pthread_mutex_unlock(&pruWrite);
 
@@ -165,6 +161,9 @@ void *pruThread (void *var) {
 
     // Continue PRU sampling
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
+  }
+  if (fd) {
+    close(fd);
   }
   // ===============================
 
@@ -208,15 +207,17 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 15;
+  int numEpochs = 350;
   while (running) {
     if (numEpochs < 0) {
       running = false; // DEBUG
     }
-    if (numEpochs == 5) {
+    if (numEpochs == 50) {
       save = true;
     }
     numEpochs--;
+
+    printf("epoch:%d\n", numEpochs);
     
     // Read config file and set values
     // Init file read vars
