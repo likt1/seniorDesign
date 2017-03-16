@@ -57,6 +57,8 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
             @Override
             public void onPageSelected(int position) {
                 actionBar.setSelectedNavigationItem(position);
+                SharedPreferences prefs = getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+                prefs.edit().putInt("currentPage",position).apply();
             }
         });
 
@@ -78,17 +80,15 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
         }
 
         ACCESS_TOKEN = retrieveAccessToken();
-        Toast.makeText(this, ACCESS_TOKEN, Toast.LENGTH_LONG).show();
-
-
+        getUserAccount();
 
         android.support.v4.app.FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         BluetoothChatFragment fragment = new BluetoothChatFragment();
         transaction.replace(R.id.sample_content_fragment, fragment);
         transaction.commit();
 
-
     }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -280,21 +280,6 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
             View rootView = inflater.inflate(R.layout.wifi, container, false);
 
             Button button = (Button) rootView.findViewById(R.id.button_send);
-
-//            button.setOnClickListener(new View.OnClickListener(){
-//                @Override
-//                public void onClick(View v){
-////                    Context context = getActivity().getApplicationContext();
-////                    CharSequence text = "Hello toast!";
-////                    int duration = Toast.LENGTH_SHORT;
-////
-////                    Toast toast = Toast.makeText(context, text, duration);
-////                    toast.show();
-//                    Toast.makeText(getActivity(), "Hello World", Toast.LENGTH_LONG).show();
-//                }
-//            }
-//
-//            );
             return rootView;
         }
 
@@ -358,5 +343,23 @@ public class MainActivity extends FragmentActivity implements ActionBar.TabListe
             return accessToken;
         }
     }
+
+    protected void getUserAccount() {
+        if (ACCESS_TOKEN == null)return;
+        new UserAccountTask(DropboxClient.getClient(ACCESS_TOKEN), new UserAccountTask.TaskDelegate() {
+            @Override
+            public void onAccountReceived(FullAccount account) {
+                //Print account's info
+                SharedPreferences prefs = getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+                prefs.edit().putString("dbxName",account.getName().getDisplayName()).apply();
+                prefs.edit().putString("dbxEmail",account.getEmail()).apply();
+            }
+            @Override
+            public void onError(Exception error) {
+
+            }
+        }).execute();
+    }
+
 
 }
