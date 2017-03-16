@@ -10,6 +10,10 @@ idxType = 0
 count = 0
 debounce = False
 flag = 0
+recordingFlag = -1 # will be set when actively recording
+activeReady = False # will be set when in Active Mode
+activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
+activeCount = 0
 currentSwitchState = 0
 temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
 
@@ -83,7 +87,7 @@ while True:
     target3 = open('/sys/class/gpio/gpio69/value' , 'r')
     currentReading = int(target3.read())
     target3.close()
-	
+    
     if prevSwitchReading == -1: # if init, set previous as current
         prevSwitchReading = currentReading
         currentSwitchState = False
@@ -106,8 +110,46 @@ while True:
     # check if we are actively recording (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
     #if 
+    
+    if recordingFlag == -1: # initiallize IsRecording
+        recordingFlag = 0
+        temp = temp.replace("bb","No") # write to config
+        flag = 1
+    
+    if settingsTime[getIndex(idxTime,len(settingsTime))] == "active" and activeReady == False
+        activeReady = True
+        activeSwitch = currentSwitchState
+        
+    elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True
+        if recordingFlag == 1
+            recordingFlag = 0
+            temp = temp.replace("Yes","No") # write to config
+            activeCount = 0
+            # Set Recording LED to solid ON
+            flag = 1
+        activeReady = False
+        
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 0
+        recordingFlag = 1
+        temp = temp.replace("No","Yes") # write to config
+        activeSwitch = currentSwitchState
+        flag = 1
+    
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 1
+        recordingFlag = 0
+        temp = temp.replace("Yes","No") # write to config
+        activeSwitch = currentSwitchState
+        activeCount = 0
+        # Set Recording LED to solid ON
+        flag = 1
 
+    elif recordingFlag == 1
+        activeCount += 1
+        if activeCount >= 50  # number subject to change
+            #Blink Recording LED
+            activeCount = 0
 
+            
     # check if we have low sd-card memory (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
 
