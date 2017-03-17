@@ -63,3 +63,4 @@ VM/.vagrant/*
 # adc
 **/*.bin
 **/circularBuffer
+**/mem2file

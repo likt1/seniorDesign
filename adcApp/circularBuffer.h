@@ -14,7 +14,7 @@ typedef uint8_t byte;       // 8bit
 #define BUFFER_LENGTH 3 // DEBUG length is 30 sec
 #define BUFFER_SIZE (SAMPLE_RATE*BUFFER_LENGTH) // Set buffer size
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
-#define PRU_SAMPLES_NUM 7950
+#define PRU_SAMPLES_NUM 7950  // 8000 is 16kb so just a bit lower than that
 
 #define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
 
