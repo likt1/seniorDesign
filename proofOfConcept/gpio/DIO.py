@@ -19,7 +19,7 @@ activeReady = False # will be set when in Active Mode
 activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
 currentSwitchState = 0
 
-temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
+temp = "[DIO]\nCompRotary=xx\nTimeRotary=yy\nFootswitch=zz\nMemoryLow=aa\nIsRecording=bb\n" #set template
 
 # TODO: enhance to support MemoryLow and IsRecording...
 
@@ -32,9 +32,9 @@ while True:
     if os.path.isfile("/root/conf/DIO.config")
         f = open(settings_file,'r')
         settings = f.readlines()
-        idxTime = settingsTime.index(settings[1].split(":",1)[1].strip()) # Time
-        idxType = settingsType.index(settings[0].split(":",1)[1].strip()) # Type
-        currentSwitchState = settings[2].split(":",1)[1].strip() # switch
+        idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
+        idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
+        currentSwitchState = settings[3].split("=",1)[1].strip() # switch
         
         # May be used in future
         #prev_warning = settings[3].split(":",1)[1].strip()
@@ -107,7 +107,7 @@ while True:
         count +=1 #debouncing
         if count == 5:
             currentSwitchState = not currentSwitchState
-            temp = temp.replace("Footswitch:"+str(not currentSwitchState),"Footswitch:"+str(currentSwitchState))  # write to config
+            temp = temp.replace("Footswitch="+str(not currentSwitchState),"Footswitch="+str(currentSwitchState))  # write to config
             count = 0
             debounce = False
             flag = 1
@@ -128,7 +128,7 @@ while True:
     elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True:
         if recordingFlag == True:
             recordingFlag = False
-            temp = temp.replace("IsRecording:True","IsRecording:False") # write to config
+            temp = temp.replace("IsRecording=True","IsRecording=False") # write to config
             activeCount = 0
             # Set Recording LED to solid ON
             flag = 1
@@ -136,13 +136,13 @@ while True:
         
     elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == False:
         recordingFlag = True
-        temp = temp.replace("IsRecording:False","IsRecording:True") # write to config
+        temp = temp.replace("IsRecording=False","IsRecording=True") # write to config
         activeSwitch = currentSwitchState
         flag = 1
     
     elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == True:
         recordingFlag = False
-        temp = temp.replace("IsRecording:True","IsRecording:False") # write to config
+        temp = temp.replace("IsRecording=True","IsRecording=False") # write to config
         activeSwitch = currentSwitchState
         # Set Recording LED to solid ON
         flag = 1
@@ -171,13 +171,13 @@ while True:
         if int(available) < 300000 and flagSD == False:
             #print("warn the user, space available (in sd card) is below 30MB")
             flagSD = True
-            temp = temp.replace("MemoryLow:False","MemoryLow:True") # write to 
+            temp = temp.replace("MemoryLow=False","MemoryLow=True") # write to 
             flag = 1
             
         elif int(available) >= 300000 and flagSD == True:
             #print("space available is fine (for sd card)")
             flagSD = False
-            temp = temp.replace("MemoryLow:True","MemoryLow:False") # write to config
+            temp = temp.replace("MemoryLow=True","MemoryLow=False") # write to config
             flag = 1
     
     
