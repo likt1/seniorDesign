@@ -72,7 +72,7 @@ void *pruThread (void *var) {
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
   PRU_local.samples.length = PRU_SAMPLES_NUM;
-  PRU_local.cap_delay = 0;
+  PRU_local.cap_delay = 1955;
   PRU_local.timer = 0;
   PRU_local.flags = 0;
   r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
