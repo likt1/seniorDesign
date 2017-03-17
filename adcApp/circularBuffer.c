@@ -7,6 +7,7 @@
 #include <pruss_intc_mapping.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "circularBuffer.h"
 
@@ -19,6 +20,8 @@ pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
 halfword *sampleBuffer;
+int pruSampNum = 512; // atm arbitrary
+byte *buf;
 word PRU0RamAddrOff;
 
 // Opens up file and parses value in hex
@@ -105,32 +108,38 @@ void *pruThread (void *var) {
     
     off_t buffOff;
     buffOff = PRU0RamAddrOff;
-    printf("buffOff:0x%X ", buffOff);
         
     // Write to buffer
     //pthread_mutex_lock(&pruWrite);
-    if (!noop) {
-      int i;
+    //if (!noop) {
+      int i = 0;
       halfword sample = 0; // Init sample var
-      int pruSampBufSize = 1024; // atm arbitrary
       while (i < PRU_local.samples.length && mapAccess) { // For each sample in pru buffer if we have access
         // Get sample
-        halfword buf[pruSampBufSize];
-        lseek(fd, buffOff, SEEK_SET);
-        buffOff += pruSampBufSize;
-        r = read(fd, buf, pruSampBufSize*2);
-        if (r < 1) {
+        r = lseek(fd, buffOff, SEEK_SET);
+        if (r < 0) {
+          printf("Failed seek at:0x%X returnError:[%s]\n", buffOff, strerror(errno));
           mapAccess = false;
+        }
+        else {
+          printf("Seeked:0x%X\n", r);
+          r = read(fd, (void *) buf, pruSampNum*2);
+          if (r < 1) {
+            printf("Failed read at:0x%X, returnError:[%s]\n", buffOff, strerror(errno));
+            mapAccess = false;
+          }
         }
         
         int j;
-        for (j = 0; i < PRU_local.samples.length && j < pruSampBufSize && mapAccess; j++) { // Grab sample and put into buffer
-          sample = buf[j];
-          if (sample != 0xfff) { //DEBUG
-            //printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+        for (j = 0; i < PRU_local.samples.length && j < pruSampNum*2 && mapAccess; j += 2) { // Grab sample and put into buffer
+          sample = ((halfword) buf[j]) << 4;
+          sample += (halfword) buf[j + 1];
+          if (sample != 0xfff || true) { //DEBUG
+            printf("Debug at access:%d,%d sample:0x%X Offset:0x%X\n", i, j, sample, buffOff);
             youAreAFailure = true;
           }
           
+          // Upscale to 16bit from 12bit
           /*sampleBuffer[next] = sample * 16;
           next++;
           if (next == BUFFER_SIZE) {
@@ -145,10 +154,9 @@ void *pruThread (void *var) {
           i++; // inc number of samples read
         }
      
-        // Upscale to 16bit from 12bit
-        
+        buffOff += pruSampNum;
       }
-    }
+    //}
     //pthread_mutex_unlock(&pruWrite);
     
     if (fd) {
@@ -162,6 +170,7 @@ void *pruThread (void *var) {
     //}
     //pthread_mutex_unlock(&stop);
     
+    printf("map access :%d\n", mapAccess);
     if (youAreAFailure) {
        printf("There were errors yo\n");
     }
@@ -375,11 +384,18 @@ void main (void) {
   sampleBuffer = malloc(sizeof(int) * BUFFER_SIZE);
   if (!sampleBuffer) {
     printf("mem alloc failed\n");
+    return;
   }
-  
+  buf = malloc(sizeof(byte) * pruSampNum*2);
+  if (!buf) {
+    printf("mem alloc faled for samp\n");
+    return;
+  }
+
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
 
   buffer();
 
   free(sampleBuffer);
+  free(buf);
 }
