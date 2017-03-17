@@ -134,7 +134,7 @@ void *pruThread (void *var) {
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
-  PRU_local.samples.length = 795; // 8000 is 16kb so just a bit lower than that
+  PRU_local.samples.length = PRU_SAMPLES_NUM; // 8000 is 16kb so just a bit lower than that
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
   PRU_local.flags = 0;
