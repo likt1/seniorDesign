@@ -17,6 +17,7 @@ recordingFlag = -1 # will be set when actively recording
 activeReady = False # will be set when in Active Mode
 activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
 activeCount = 0
+sdCount = 0
 currentSwitchState = 0
 flagSD = -1
 
@@ -108,7 +109,7 @@ while True:
         count +=1 #debouncing
         if count == 5:
             currentSwitchState = not currentSwitchState
-            temp = temp.replace(str(not currentSwitchState),str(currentSwitchState))  # write to config
+            temp = temp.replace("Footswitch:"+str(not currentSwitchState),"Footswitch:"+str(currentSwitchState))  # write to config
             count = 0
             debounce = False
             flag = 1
@@ -118,8 +119,8 @@ while True:
     #if 
     
     if recordingFlag == -1: # initiallize IsRecording
-        recordingFlag = 0
-        temp = temp.replace("bb","No") # write to config
+        recordingFlag = False
+        temp = temp.replace("bb","False") # write to config
         flag = 1
     
     if settingsTime[getIndex(idxTime,len(settingsTime))] == "active" and activeReady == False:
@@ -127,29 +128,29 @@ while True:
         activeSwitch = currentSwitchState
         
     elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True:
-        if recordingFlag == 1:
-            recordingFlag = 0
-            temp = temp.replace("Yes","No") # write to config
+        if recordingFlag == True:
+            recordingFlag = False
+            temp = temp.replace("IsRecording:True","IsRecording:False") # write to config
             activeCount = 0
             # Set Recording LED to solid ON
             flag = 1
         activeReady = False
         
-    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 0:
-        recordingFlag = 1
-        temp = temp.replace("No","Yes") # write to config
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == False:
+        recordingFlag = True
+        temp = temp.replace("IsRecording:False","IsRecording:True") # write to config
         activeSwitch = currentSwitchState
         flag = 1
     
-    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == 1:
-        recordingFlag = 0
-        temp = temp.replace("Yes","No") # write to config
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == True:
+        recordingFlag = False
+        temp = temp.replace("IsRecording:True","IsRecording:False") # write to config
         activeSwitch = currentSwitchState
         activeCount = 0
         # Set Recording LED to solid ON
         flag = 1
 
-    elif recordingFlag == 1:
+    elif recordingFlag == True:
         activeCount += 1
         if activeCount >= 50:  # number subject to change
             #Blink Recording LED
@@ -160,8 +161,8 @@ while True:
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
 
     if flagSD == -1:
-        flagSD = 0
-        temp = temp.replace("aa","Open Memory") # write to config
+        flagSD = False
+        temp = temp.replace("aa","False") # write to config
     
     if os.path.ismount(sd_loc):
         #print("discovered sd card")
@@ -176,17 +177,24 @@ while True:
         # uncomment to audit df return
         #print(device, size, used, available, percent, mountpoint)
 
-        if int(available) < 300000 and flagSD == 0:
+        if int(available) < 300000 and flagSD == False:
             #print("warn the user, space available (in sd card) is below 30MB")
-            flagSD = 1
-            temp = temp.replace("Open Memory","Low Memory") # write to 
+            flagSD = True
+            temp = temp.replace("MemoryLow:False","MemoryLow:True") # write to 
             flag = 1
             
-        elif int(available) >= 300000 and flagSD == 1:
+        elif int(available) >= 300000 and flagSD == True:
             #print("space available is fine (for sd card)")
-            flagSD = 0
-            temp = temp.replace("Low Memory","Open Memory") # write to config
+            flagSD = False
+            temp = temp.replace("MemoryLow:True","MemoryLow:False") # write to config
+            sdCount = 0
             flag = 1
+            
+        elif flagSD == True:
+        sdCount += 1
+        if sdCount >= 50:  # number subject to change
+            #Blink Compression LED
+            sdCount = 0
     
     
     if flag == 1:        
