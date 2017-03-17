@@ -33,13 +33,14 @@ while True:
     if os.path.isfile("/root/conf/DIO.config")
         f = open(settings_file,'r')
         settings = f.readlines()
-        prevRotaryReading2 = settings[0].split(":",1)[1].strip() # compression
-        prevRotaryReading1 = settings[1].split(":",1)[1].strip() # time
-        prev_warning = settings[3].split(":",1)[1].strip()
-        prev_active = settings[4].split(":",1)[1].strip()
-        # ensure good indices
-        idxTime = settingsTime.index(prevRotaryReading2)
-        idxType = settingsType.index(prevRotaryReading1)
+        idxTime = settingsTime.index(settings[1].split(":",1)[1].strip()) # Time
+        idxType = settingsType.index(settings[0].split(":",1)[1].strip()) # Type
+        currentSwitchState = settings[2].split(":",1)[1].strip() # switch
+        
+        # May be used in future
+        #prev_warning = settings[3].split(":",1)[1].strip()
+        #prev_active = settings[4].split(":",1)[1].strip()
+        
         f.close()
     
     # get rotary value for retro-Time/Active
