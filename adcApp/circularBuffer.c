@@ -20,6 +20,7 @@ int next = 0;
 int start = -1;
 halfword *sampleBuffer;
 word PRU0RamAddrOff;
+struct locals PRU_local;
 
 // Opens up file and parses value in hex
 word readFileVal(char filenm[]) {
@@ -31,11 +32,81 @@ word readFileVal(char filenm[]) {
   return value;
 }
 
+void *memReadThread (void *var) {
+  void *map_base;
+  bool youAreAFailure = false;
+  bool mapAccess = true;
+
+  int fd = open("/dev/mem", O_RDONLY);
+  if (fd == -1) {
+    printf("Failed to open ram to fetch adc values.\n");
+    mapAccess = false;
+  }
+  printf("fd:%d ", fd);
+  
+  off_t mapLoc;
+  mapLoc = PRU0RamAddrOff;
+  printf("mapLoc:0x%X ", mapLoc);
+  
+  map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+  if (map_base == (void *) -1) {
+    printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
+    mapAccess = false;
+  }
+  printf("map_base:0x%X ", map_base);
+  if (fd) {
+    close(fd);
+  }
+  
+  halfword sample = 0; // Init sample var
+  void *virt_addr; 
+      
+  int i;
+  for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
+    // Get sample
+    off_t buffOff = PRU_local.samples.addr + i*2;
+    
+    if (mapAccess) { // Grab sample
+      virt_addr = map_base + (buffOff); //& MAP_MASK);
+      sample = *((halfword *) virt_addr);
+      if (sample != 0xfff) { //DEBUG
+        //printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+        youAreAFailure = true;
+      }
+    }
+        
+    if (i == PRU_local.samples.length - 1) {
+      printf("i:%d virt_addr:0x%X\n", i, virt_addr);
+    }
+    
+    // Upscale to 16bit from 12bit
+    //sampleBuffer[next] = sample * 16;
+    //next++;
+    //if (next == BUFFER_SIZE) {
+    //  next = 0;
+    //}
+    //if (next == start) {
+    //  save = true;
+    //  noop = true;
+    //  break;
+    //}
+  }
+    
+  if (map_base != (void *) -1) {
+    munmap(map_base, MAP_SIZE);
+  }
+   
+  if (youAreAFailure) {
+     printf("There were errors yo\n");
+  }
+
+  return NULL;
+}
+
 void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
-  struct locals PRU_local;
   int r;
 
   // Allocate and init mem
@@ -86,92 +157,33 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-
   int run = 2;  
   while (run > 0) {
-    bool youAreAFailure = false;
     run--;
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
-    void *map_base;
-
-    bool mapAccess = true;
-    int fd = open("/dev/mem", O_RDONLY);
-    if (fd == -1) {
-      printf("Failed to open ram to fetch adc values.\n");
-      mapAccess = false;
-    }
-    printf("fd:%d ", fd);
-    off_t mapLoc;
-    mapLoc = PRU0RamAddrOff;
-    printf("mapLoc:0x%X ", mapLoc);
-    lseek(fd, mapLoc);
-    halfword *buf;
-    read(fd, (void *) buf, MAP_SIZE);
-    //map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
-    //if (map_base == (void *) -1) {
-    //  printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
-    //  mapAccess = false;
-   // }
-    //printf("map_base:0x%X ", map_base);
-    if (fd) {
-      close(fd);
-    }
     
     // Write to buffer
     //pthread_mutex_lock(&pruWrite);
-    ///if (!noop) {
-      int i;
-      halfword sample = 0; // Init sample var
-    //  void *virt_addr; 
-      
-      for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
-        // Get sample
-        //off_t buffOff = PRU_local.samples.addr + i*2;
-        // HEREHEREHERE
-        if (mapAccess) { // Grab sample
-          virt_addr = map_base + (buffOff); //& MAP_MASK);
-          sample = *((halfword *) virt_addr);
-          if (sample != 0xfff) { //DEBUG
-            //printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
-            youAreAFailure = true;
-          }
+    //if (!noop) {
+        printf("init mem read thread\n");
+        pthread_t threadID;
+        if (pthread_create(&threadID, NULL, memReadThread, NULL) != 0) {
+          printf("Failed to init pru thread obj\n");
         }
-        
-        if (i == PRU_local.samples.length - 1) {
-          printf("i:%d virt_addr:0x%X\n", i, virt_addr);
-        }
-     
-        // Upscale to 16bit from 12bit
-      /*  sampleBuffer[next] = sample * 16;
-        next++;
-        if (next == BUFFER_SIZE) {
-          next = 0;
-        }
-        if (next == start) {
-          save = true;
-          noop = true;
-          break;
-        }*/
-      }
+        pthread_join(threadID, NULL);
+        printf("mem thread done\n");
     //}
     //pthread_mutex_unlock(&pruWrite);
 
-    if (map_base != (void *) -1) {
-      munmap(map_base, MAP_SIZE);
-    }
-   
     // Check to see if we should stop
     //pthread_mutex_lock(&stop);
     //if (!run) {
-     // break;
-   // }
+    //  break;
+    //}
     //pthread_mutex_unlock(&stop);
-    if (youAreAFailure) {
-       printf("There were errors yo\n");
-    }
 
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
