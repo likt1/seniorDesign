@@ -63,7 +63,7 @@ void *pruThread (void *var) {
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
-  PRU_local.samples.length = 7950; // 8000 is 16kb so just a bit lower than that
+  PRU_local.samples.length = 795; // 8000 is 16kb so just a bit lower than that
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
   PRU_local.flags = 0;
@@ -107,12 +107,15 @@ void *pruThread (void *var) {
     off_t mapLoc;
     mapLoc = PRU0RamAddrOff;
     printf("mapLoc:0x%X ", mapLoc);
-    map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
-    if (map_base == (void *) -1) {
-      printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
-      mapAccess = false;
-    }
-    printf("map_base:0x%X ", map_base);
+    lseek(fd, mapLoc);
+    halfword *buf;
+    read(fd, (void *) buf, MAP_SIZE);
+    //map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+    //if (map_base == (void *) -1) {
+    //  printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
+    //  mapAccess = false;
+   // }
+    //printf("map_base:0x%X ", map_base);
     if (fd) {
       close(fd);
     }
@@ -122,11 +125,12 @@ void *pruThread (void *var) {
     ///if (!noop) {
       int i;
       halfword sample = 0; // Init sample var
-      void *virt_addr; 
+    //  void *virt_addr; 
       
       for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
         // Get sample
-        off_t buffOff = PRU_local.samples.addr + i*2;
+        //off_t buffOff = PRU_local.samples.addr + i*2;
+        // HEREHEREHERE
         if (mapAccess) { // Grab sample
           virt_addr = map_base + (buffOff); //& MAP_MASK);
           sample = *((halfword *) virt_addr);
