@@ -20,13 +20,19 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.view.ViewPager;
+import android.util.Base64;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -35,39 +41,39 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.common.base.Charsets;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.json.JSONObject;
-
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.CharacterCodingException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import static android.view.View.GONE;
+import static android.view.View.VISIBLE;
 
 
 //import com.example.android.common.logger.Log;
 
 /**
- * This fragment controls Bluetooth to communicate with other devices.
+ * This fragment controls Bluetooth communication
  */
 public class BluetoothChatFragment extends Fragment {
 
@@ -82,6 +88,7 @@ public class BluetoothChatFragment extends Fragment {
     private ListView mConversationView;
     private EditText mOutEditText;
     private Button mSendButton;
+    private EditText mEditEmail, mEditDisplayName;
 
     /**
      * Name of the connected device
@@ -152,6 +159,7 @@ public class BluetoothChatFragment extends Fragment {
         if (mChatService != null) {
             mChatService.stop();
         }
+
     }
 
     @Override
@@ -187,6 +195,61 @@ public class BluetoothChatFragment extends Fragment {
         final Spinner mSpinner = (Spinner) getView().findViewById(R.id.spinNetwork);
         final EditText mEditPassword = (EditText) getView().findViewById(R.id.editPassword);
 
+        final SharedPreferences prefs = getActivity().getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+
+        final SharedPreferences.OnSharedPreferenceChangeListener listener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
+                // Implementation
+                Integer value = prefs.getInt(key, 0);
+                //Toast.makeText(getActivity(), value.toString(), Toast.LENGTH_LONG).show();
+                LinearLayout layoutWifi = (LinearLayout) getActivity().findViewById(R.id.layoutWifi);
+                LinearLayout layoutDropbox = (LinearLayout) getActivity().findViewById(R.id.layoutDropbox);
+                LinearLayout layoutControl = (LinearLayout) getActivity().findViewById(R.id.layoutControl);
+                switch(value) {
+                    case 0:
+                        layoutWifi.setVisibility(VISIBLE);
+                        layoutDropbox.setVisibility(GONE);
+                        layoutControl.setVisibility(GONE);
+                        break;
+                    case 1:
+                        layoutWifi.setVisibility(GONE);
+                        layoutDropbox.setVisibility(VISIBLE);
+                        layoutControl.setVisibility(GONE);
+                        break;
+                    case 2:
+                        layoutWifi.setVisibility(GONE);
+                        layoutDropbox.setVisibility(GONE);
+                        layoutControl.setVisibility(VISIBLE);
+                        break;
+                }
+            }
+        };
+
+        prefs.registerOnSharedPreferenceChangeListener(listener);
+
+        mSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+
+            public void onItemSelected(AdapterView<?> parent, View view,
+                                       int pos, long id) {
+                Network selectedNetwork = (Network) parent.getItemAtPosition(pos);
+                //Toast.makeText(getActivity(), selectedNetwork.getSecurity(),Toast.LENGTH_SHORT).show();
+
+                if(selectedNetwork.getSecurity().equals("peap")){
+                    getView().findViewById(R.id.editUsername).setVisibility(VISIBLE);
+                    getView().findViewById(R.id.tvUsername).setVisibility(VISIBLE);
+                }else{
+                    getView().findViewById(R.id.editUsername).setVisibility(GONE);
+                    getView().findViewById(R.id.tvUsername).setVisibility(GONE);
+                }
+
+            }
+
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Do nothing, just another required interface callback
+            }
+
+        }); // (optional)
+
         final Button mTestButton = (Button) getView().findViewById(R.id.button_test);
         mTestButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v){
@@ -207,15 +270,25 @@ public class BluetoothChatFragment extends Fragment {
                     String ssid = mSpinner.getSelectedItem().toString();
                     String password = mEditPassword.getText().toString();
                     String passwordEncrypted = encrypt(password);
+                    Base64.encode(password.getBytes(), Base64.NO_PADDING);
                     int id = networksTest.indexOf(mSpinner.getSelectedItem());
                     String status = networksTest.get(id).getStatus();
                     String security = networksTest.get(id).getSecurity();
                     String serviceKey = networksTest.get(id).getServiceKey();
 
+                    EditText teUser = (EditText) view.findViewById(R.id.editUsername);
+                    String username = teUser.getText().toString();
+
                     Gson gson = new Gson();
                     JsonObject jsonObject = new JsonObject();
                     jsonObject.addProperty("type","connectToNetwork");
-                    jsonObject.add("parameters", gson.toJsonTree(new Network(id,ssid,serviceKey,status,security,password)));
+
+                    Toast.makeText(getActivity(), username, Toast.LENGTH_LONG).show();
+
+                    if(username != "")
+                        jsonObject.add("parameters", gson.toJsonTree(new Network(id,ssid,serviceKey,status,security,password,username)));
+                    else
+                        jsonObject.add("parameters", gson.toJsonTree(new Network(id,ssid,serviceKey,status,security,password)));
                     String json = gson.toJson(jsonObject);
 
                     sendMessage(json);
@@ -227,7 +300,41 @@ public class BluetoothChatFragment extends Fragment {
         mAdapterNetwork.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         mSpinner.setAdapter(mAdapterNetwork);
 
+
+        Spinner spinner = (Spinner) getActivity().findViewById(R.id.spinFormat);
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getActivity(),R.array.file_formats, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+
+        mEditDisplayName = (EditText) getActivity().findViewById(R.id.editDisplayName);
+        mEditEmail = (EditText) getActivity().findViewById(R.id.editEmail);
+
+        mEditDisplayName.setText(prefs.getString("dbxName",""));
+        mEditEmail.setText(prefs.getString("dbxEmail",""));
+
+        SeekBar mSeekControl = (SeekBar) getActivity().findViewById(R.id.seekControl);
+        mSeekControl.setMax(3);
+        mSeekControl.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+
+                //sendMessage("TEST");
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+
     }
+
 
     String encrypt(String text){
         //TODO Fix this garbage function
@@ -288,6 +395,7 @@ public class BluetoothChatFragment extends Fragment {
         private String status;
         private String serviceKey;
         private String password;
+        private String  username;
 
         public Network(){}
 
@@ -318,6 +426,16 @@ public class BluetoothChatFragment extends Fragment {
             this.status = status;
             this.security = security;
             this.password = password;
+        }
+
+        public Network(int id, String ssid, String serviceKey, String status, String security, String password, String username){
+            this.id = id;
+            this.ssid = ssid;
+            this.serviceKey = serviceKey;
+            this.status = status;
+            this.security = security;
+            this.password = password;
+            this.username = username;
         }
 
         public Network(int id, String ssid, String securityType, String connectionStatus){
@@ -531,13 +649,34 @@ public class BluetoothChatFragment extends Fragment {
                                     networksTest.add(new Network(
                                             net.getAsJsonObject().get("id").getAsInt(),
                                             net.getAsJsonObject().get("ssid").getAsString(),
-                                            net.getAsJsonObject().get("security").getAsString(),
-                                            net.getAsJsonObject().get("status").getAsString()
+                                            net.getAsJsonObject().get("serviceKey").getAsString(),
+                                            net.getAsJsonObject().get("status").getAsString(),
+                                            net.getAsJsonObject().get("security").getAsString()
                                     ));
                                 }
 
                                 //Update the spinner
                                 mAdapterNetwork.notifyDataSetChanged();
+
+                                break;
+                            case "getAccessKey":
+                                //Toast.makeText(getActivity().getApplicationContext(), "I JUST GOT A MESSAGE THAT I SHOULD SEND AN ACCESS KEY", Toast.LENGTH_LONG).show();
+                                SharedPreferences prefs = getActivity().getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+                                String accessToken = prefs.getString("access-token", null);
+
+                                if (accessToken == null) {
+                                    //
+                                } else {
+                                    //accessToken already exists
+                                    Gson gson = new Gson();
+                                    JsonObject jsonObject = new JsonObject();
+                                    jsonObject.addProperty("type","accessKeyToServer");
+                                    JsonObject jsonObjectTemp = new JsonObject();
+                                    jsonObjectTemp.addProperty("access_key",accessToken);
+                                    jsonObject.add("parameters",jsonObjectTemp);
+                                    String json = gson.toJson(jsonObject);
+                                    sendMessageDummy(json,"Dummy");
+                                }
 
                                 break;
                             default:
@@ -573,6 +712,32 @@ public class BluetoothChatFragment extends Fragment {
             }
         }
     };
+
+
+    /**
+     * Sends a message. Changed name, moved down, and Overloaded because I was having trouble sending from within handlecommand.
+     *
+     * @param message A string of text to send.
+     */
+    public void sendMessageDummy(String message, String dummy) {
+        // Check that we're actually connected before trying anything
+        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+            Toast.makeText(getActivity(), R.string.not_connected, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Check that there's actually something to send
+        if (message.length() > 0) {
+            // Get the message bytes and tell the BluetoothChatService to write
+            byte[] send = message.getBytes();
+            mChatService.write(send);
+
+            // Reset out string buffer to zero and clear the edit text field
+            mOutStringBuffer.setLength(0);
+            mOutEditText.setText(mOutStringBuffer);
+        }
+    }
+
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         switch (requestCode) {
@@ -642,6 +807,10 @@ public class BluetoothChatFragment extends Fragment {
             case R.id.discoverable: {
                 // Ensure this device is discoverable by others
                 ensureDiscoverable();
+                return true;
+            }
+            case R.id.about: {
+                //TODO: Add an about screen
                 return true;
             }
         }

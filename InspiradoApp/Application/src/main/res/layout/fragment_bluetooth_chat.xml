@@ -17,69 +17,162 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical" >
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical">
 
-    <TextView
-        android:text="Network"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/tvNetwork"
-        android:layout_gravity="center_horizontal" />
-
-    <Spinner
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:gravity="center"
-        android:layout_gravity="center_horizontal"
-        android:ems="10"
-        android:id="@+id/spinNetwork" />
-
-    <TextView
-        android:text="Username"
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
         android:visibility="gone"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:id="@+id/tvUsername" />
+        android:id="@+id/layoutControl">
+        <TextView
+            android:text="File Format"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvFormat"
+            android:layout_gravity="center_horizontal" />
+        <Spinner
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:id="@+id/spinFormat">
+        </Spinner>
+        <SeekBar
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/seekControl"/>
+        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:src="@mipmap/ic_launcher"/>
 
-    <EditText
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:inputType="text"
-        android:text=""
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
         android:visibility="gone"
-        android:gravity="center_horizontal"
-        android:layout_gravity="center_horizontal"
-        android:ems="10"
-        android:id="@+id/editUsername" />
+        android:id="@+id/layoutDropbox">
+        <TextView
+            android:text="Display Name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvDbxAcct"
+            android:layout_gravity="center_horizontal" />
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:text=""
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            android:ems="10"
+            android:enabled="false"
+            android:id="@+id/editDisplayName" />
 
-    <TextView
-        android:text="Password"
+        <TextView
+            android:text="Email"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvDbxEmail"
+            android:layout_gravity="center_horizontal" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="textEmailAddress"
+            android:text=""
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            android:ems="10"
+            android:enabled="false"
+            android:id="@+id/editEmail" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="Connect to a different account"
+            />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="visible"
+        android:id="@+id/layoutWifi">
+        <TextView
+            android:text="Network"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvNetwork"
+            android:layout_gravity="center_horizontal" />
+
+        <Spinner
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:gravity="center"
+            android:layout_gravity="center_horizontal"
+            android:ems="10"
+            android:id="@+id/spinNetwork" />
+
+        <TextView
+            android:text="Username"
+            android:visibility="gone"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:id="@+id/tvUsername" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:text=""
+            android:visibility="gone"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            android:ems="10"
+            android:id="@+id/editUsername" />
+
+        <TextView
+            android:text="Password"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:id="@+id/tvPassword" />
+
+        <EditText
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:inputType="textPassword"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            android:text=""
+            android:ems="10"
+            android:id="@+id/editPassword" />
+
+        <Button
+            android:text="Connect"
+            android:id="@+id/button_connect"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
+            android:layout_gravity="center_horizontal"
+            />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:id="@+id/tvPassword" />
-
-    <EditText
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:inputType="textPassword"
-        android:gravity="center_horizontal"
-        android:layout_gravity="center_horizontal"
-        android:text=""
-        android:ems="10"
-        android:id="@+id/editPassword" />
-
-    <Button
-        android:text="Connect"
-        android:id="@+id/button_connect"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:layout_gravity="center_horizontal"
-        />
-
+        android:orientation="vertical"
+        android:visibility="visible"
+        android:id="@+id/layoutDebug">
     <Button
         android:id="@+id/button_test"
         android:layout_width="wrap_content"
@@ -91,7 +184,7 @@
         android:id="@+id/button_test_dropbox"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="visible"
+        android:visibility="gone"
         android:text="@string/test" />
 
     <ListView
@@ -100,11 +193,13 @@
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:stackFromBottom="true"
+        android:visibility="visible"
         android:transcriptMode="alwaysScroll" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:visibility="visible"
         android:orientation="horizontal" >
 
         <EditText
@@ -119,6 +214,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/send" />
+    </LinearLayout>
     </LinearLayout>
 
 </LinearLayout>
