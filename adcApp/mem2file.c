@@ -42,7 +42,7 @@ void main (void) {
     printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
     mapAccess = false;
   }
-  printf("map_base:0x%X ", map_base);
+  printf("map_base:0x%X\n", map_base);
   
   if (fd) {
     close(fd);
@@ -54,13 +54,13 @@ void main (void) {
   int i;
   for (i = 0; i < PRU_SAMPLES_NUM && mapAccess; i++) { // For each sample in pru buffer if we have access
     // Get samples
-    off_t buffOff = sizeof(locals) + i*2;
+    off_t buffOff = sizeof(struct locals) + i*2;
     
     if (mapAccess) { // Grab sample
       virt_addr = map_base + (buffOff); //& MAP_MASK);
       samples[i] = *((halfword *) virt_addr);
       if (samples[i] != 0xfff) { //DEBUG
-        //printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+        printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, samples[i], virt_addr);
         youAreAFailure = true;
       }
     }

@@ -168,13 +168,13 @@ void *pruThread (void *var) {
     // Write to buffer
     //pthread_mutex_lock(&pruWrite);
     //if (!noop) {
-        printf("init mem read thread\n");
-        pthread_t threadID;
-        if (pthread_create(&threadID, NULL, memReadThread, NULL) != 0) {
-          printf("Failed to init pru thread obj\n");
-        }
-        pthread_join(threadID, NULL);
-        printf("mem thread done\n");
+        //printf("init mem read thread\n");
+        //pthread_t threadID;
+        //if (pthread_create(&threadID, NULL, memReadThread, NULL) != 0) {
+        //  printf("Failed to init pru thread obj\n");
+        //}
+        //pthread_join(threadID, NULL);
+        //printf("mem thread done\n");
     //}
     //pthread_mutex_unlock(&pruWrite);
 
