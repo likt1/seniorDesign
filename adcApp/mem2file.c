@@ -1,7 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <time.h>
 #include <sys/mman.h>
 #include <fcntl.h>
 
@@ -58,7 +56,7 @@ void main (void) {
     
     if (mapAccess) { // Grab sample
       virt_addr = map_base + (buffOff); //& MAP_MASK);
-      samples[i] = *((halfword *) virt_addr);
+      samples[i] = *((halfword *) virt_addr) << 4; // Upscale fto 16bit from 12bit
       if (samples[i] != 0xfff) { //DEBUG
         printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, samples[i], virt_addr);
         youAreAFailure = true;
@@ -68,18 +66,6 @@ void main (void) {
     if (i == PRU_SAMPLES_NUM - 1) {
       printf("i:%d addr:0x%X virt_addr:0x%X\n", i, buffOff, virt_addr);
     }
-    
-    // Upscale to 16bit from 12bit
-    //sampleBuffer[next] = sample * 16;
-    //next++;
-    //if (next == BUFFER_SIZE) {
-    //  next = 0;
-    //}
-    //if (next == start) {
-    //  save = true;
-    //  noop = true;
-    //  break;
-    //}
   }
   
   fd = open("/root/temp_mem", O_WRONLY | O_CREAT);
