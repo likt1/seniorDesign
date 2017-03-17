@@ -86,17 +86,15 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-  int run = 8;  
-  while (run > 0) {
-    run--;
+  while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
     
     // Write to buffer
-    //pthread_mutex_lock(&pruWrite);
-    //if (!noop) {
+    pthread_mutex_lock(&pruWrite);
+    if (!noop) {
       bool youAreAFailure = false;
       bool mapAccess = true;
 
@@ -139,7 +137,7 @@ void *pruThread (void *var) {
           }
         }
         
-        /* while file exists and not end of file
+        // while file exists and not end of file
         sampleBuffer[next] = sample;
         next++;
         if (next == BUFFER_SIZE) {
@@ -149,7 +147,7 @@ void *pruThread (void *var) {
           save = true;
           noop = true;
           break;
-        }*/
+        }
         
         if (i == PRU_local.samples.length - 1) {
           printf("i:%d addr:0x%X virt_addr:0x%X\n", i, buffOff, virt_addr);
@@ -163,19 +161,18 @@ void *pruThread (void *var) {
       //if (youAreAFailure) {
       //  printf("There were errors yo\n");
       //}
-    //}
-    //pthread_mutex_unlock(&pruWrite);
+    }
+    pthread_mutex_unlock(&pruWrite);
 
     // Check to see if we should stop
-    //pthread_mutex_lock(&stop);
-    //if (!run) {
-    //  break;
-    //}
-    //pthread_mutex_unlock(&stop);
+    pthread_mutex_lock(&stop);
+    if (!run) {
+      break;
+    }
+    pthread_mutex_unlock(&stop);
 
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-    //prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
     PRU_local.flags = 1;
     r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   }
@@ -280,7 +277,7 @@ void buffer (void) {
     if (strlen(newConfig.compRotary) == 0) {
       printf("Empty new comppression rotary string!\n");
     }
-    /*
+    
     // Block write thread to check for save switching?
     pthread_mutex_lock(&pruWrite);
     
@@ -355,7 +352,7 @@ void buffer (void) {
       }
     }
     pthread_mutex_unlock(&pruWrite);
-    */
+    
     curConfig.footSwitch = newConfig.footSwitch;
     strncpy(curConfig.timeRotary, newConfig.timeRotary, CONFIG_SIZE);
     strncpy(curConfig.compRotary, newConfig.compRotary, CONFIG_SIZE);
