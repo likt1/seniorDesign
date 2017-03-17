@@ -7,6 +7,7 @@
 #include <pruss_intc_mapping.h>
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <sys/time.h>
 
 #include "circularBuffer.h"
 
@@ -30,6 +31,13 @@ word readFileVal(char filenm[]) {
   fscanf(fp, "%x", &value);
   fclose(fp);
   return value;
+}
+
+// Get timestamp
+int GetUTimeStamp() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_usec;
 }
 
 void *pruThread (void *var) {
@@ -73,7 +81,7 @@ void *pruThread (void *var) {
     prussdrv_exit();
     return NULL;
   }
-
+  
   //printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
   r = prussdrv_exec_program(PRU_NUM, "adcSample.bin");
@@ -83,6 +91,9 @@ void *pruThread (void *var) {
     return NULL;
   }
   // ===============================
+  
+  // start timer
+  int startTime = GetUTimeStamp();
 
   // MAIN PRU LOOP
   // ===============================
@@ -90,8 +101,18 @@ void *pruThread (void *var) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
+    // stop timer
+    int diff = GetUTimeStamp() - startTime;
+    if (diff < 0) {
+      diff += 1000000;
+    }
     printf("PRU returned, event number %d.\n", r);
     
+    // calc sec and sample rate
+    float sec = diff / 1000000.0;
+    float rate = ((float) PRU_local.samples.length) / sec;
+    printf("Calculated sample rate:%.2f diff:%d\n", rate, diff);
+
     // Write to buffer
     pthread_mutex_lock(&pruWrite);
     if (!noop) {
@@ -131,10 +152,10 @@ void *pruThread (void *var) {
         if (mapAccess) { // Grab sample
           virt_addr = map_base + (buffOff); //& MAP_MASK);
           sample = *((volatile halfword *) virt_addr) << 4; // Upscale fto 16bit from 12bit
-          if (sample != 0xfff0 && !youAreAFailure) { //DEBUG
-            printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
-            youAreAFailure = true;
-          }
+          //if (sample != 0xfff0 && !youAreAFailure) { //DEBUG
+          //  printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
+          //  youAreAFailure = true;
+          //}
         }
         
         // while file exists and not end of file
@@ -144,6 +165,7 @@ void *pruThread (void *var) {
           next = 0;
         }
         if (next == start) {
+          printf("start val is:%d\n", start);
           save = true;
           noop = true;
           break;
@@ -171,10 +193,13 @@ void *pruThread (void *var) {
     }
     pthread_mutex_unlock(&stop);
 
+    // start timer
+    startTime = GetUTimeStamp();
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     PRU_local.flags = 1;
     r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
+
   }
   // ===============================
 
@@ -287,6 +312,7 @@ void buffer (void) {
         start = next; // start active
       }
       else { // save buffer
+        printf("footswitch thrown\n");
         save = true;
       }
     }
