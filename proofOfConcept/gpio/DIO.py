@@ -35,7 +35,7 @@ while True:
         idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
         idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
         currentSwitchState = settings[3].split("=",1)[1].strip() # switch
-		currentSwitchState in ["true", "True"]
+        currentSwitchState in ["true", "True"]
         
         # May be used in future
         #prev_warning = settings[3].split(":",1)[1].strip()
