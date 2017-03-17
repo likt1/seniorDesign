@@ -86,59 +86,62 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-  void *map_bases[4];
-  bool mapAccess = true;
-  int fd = open("/dev/mem", O_RDONLY | O_SYNC);
-  if (fd == -1) {
-    printf("Failed to open ram to fetch adc values.\n");
-    mapAccess = false;
-  }
-  int j;
-  off_t mapLoc;
-  for (j = 0; j < 4 && mapAccess; j++) {
-    mapLoc = PRU0RamAddrOff + 0x1000*j;
-    map_bases[j] = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc & ~MAP_MASK);
-    if (map_bases[j] == (void *) -1) {
-      printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
-      mapAccess = false;
-      break;
-    }
-  }
-  
-  while (true) {
-    j = 0; // RESET MEMORY MAP INDEX
+
+  int run = 2;  
+  while (run > 0) {
+    bool youAreAFailure = false;
+    run--;
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
+    void *map_base;
+
+    bool mapAccess = true;
+    int fd = open("/dev/mem", O_RDONLY);
+    if (fd == -1) {
+      printf("Failed to open ram to fetch adc values.\n");
+      mapAccess = false;
+    }
+    printf("fd:%d ", fd);
+    off_t mapLoc;
+    mapLoc = PRU0RamAddrOff;
+    printf("mapLoc:0x%X ", mapLoc);
+    map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+    if (map_base == (void *) -1) {
+      printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
+      mapAccess = false;
+    }
+    printf("map_base:0x%X ", map_base);
+    if (fd) {
+      close(fd);
+    }
     
-     // Write to buffer
-    pthread_mutex_lock(&pruWrite);
-    if (!noop) {
+    // Write to buffer
+    //pthread_mutex_lock(&pruWrite);
+    ///if (!noop) {
       int i;
       halfword sample = 0; // Init sample var
       void *virt_addr; 
       
       for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
         // Get sample
-        off_t buffOff = (PRU_local.samples.addr + i*2) % MAP_SIZE;
-        
-        // Move to next map if we are on the start of a map split
-        if (buffOff == 0 && i != 0) {
-          j++;
-        }
-        
+        off_t buffOff = PRU_local.samples.addr + i*2;
         if (mapAccess) { // Grab sample
-          virt_addr = map_bases[j] + (buffOff & MAP_MASK);
+          virt_addr = map_base + (buffOff); //& MAP_MASK);
           sample = *((halfword *) virt_addr);
           if (sample != 0xfff) { //DEBUG
-            printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+            //printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+            youAreAFailure = true;
           }
+        }
+        
+        if (i == PRU_local.samples.length - 1) {
+          printf("i:%d virt_addr:0x%X\n", i, virt_addr);
         }
      
         // Upscale to 16bit from 12bit
-        sampleBuffer[next] = sample * 16;
+      /*  sampleBuffer[next] = sample * 16;
         next++;
         if (next == BUFFER_SIZE) {
           next = 0;
@@ -147,23 +150,28 @@ void *pruThread (void *var) {
           save = true;
           noop = true;
           break;
-        }
+        }*/
       }
-    }
-    pthread_mutex_unlock(&pruWrite);
+    //}
+    //pthread_mutex_unlock(&pruWrite);
 
-    // Check to see if we should stop
-    pthread_mutex_lock(&stop);
-    if (!run) {
-      break;
+    if (map_base != (void *) -1) {
+      munmap(map_base, MAP_SIZE);
     }
-    pthread_mutex_unlock(&stop);
+   
+    // Check to see if we should stop
+    //pthread_mutex_lock(&stop);
+    //if (!run) {
+     // break;
+   // }
+    //pthread_mutex_unlock(&stop);
+    if (youAreAFailure) {
+       printf("There were errors yo\n");
+    }
 
     // Continue PRU sampling
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
-  }
-  if (fd) {
-    close(fd);
   }
   // ===============================
 
@@ -208,16 +216,16 @@ void buffer (void) {
   // MAIN CONFIG FILE LOOP 
   // ===============================
   int numEpochs = 350;
-  while (running) {
-    if (numEpochs < 0) {
-      running = false; // DEBUG
+  while (true) {
+    if (numEpochs == 0) {
+      break; // DEBUG
     }
     if (numEpochs == 50) {
       save = true;
     }
     numEpochs--;
 
-    printf("epoch:%d\n", numEpochs);
+    //printf("epoch:%d\n", numEpochs);
     
     // Read config file and set values
     // Init file read vars
@@ -266,7 +274,7 @@ void buffer (void) {
     if (strlen(newConfig.compRotary) == 0) {
       printf("Empty new comppression rotary string!\n");
     }
-    
+    /*
     // Block write thread to check for save switching?
     pthread_mutex_lock(&pruWrite);
     
@@ -341,7 +349,7 @@ void buffer (void) {
       }
     }
     pthread_mutex_unlock(&pruWrite);
-    
+    */
     curConfig.footSwitch = newConfig.footSwitch;
     strncpy(curConfig.timeRotary, newConfig.timeRotary, CONFIG_SIZE);
     strncpy(curConfig.compRotary, newConfig.compRotary, CONFIG_SIZE);
