@@ -14,12 +14,10 @@ count = 0
 debounce = False
 flag = 0
 recordingFlag = -1 # will be set when actively recording
+flagSD = -1
 activeReady = False # will be set when in Active Mode
 activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
-activeCount = 0
-sdCount = 0
 currentSwitchState = 0
-flagSD = -1
 
 temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
 
@@ -146,15 +144,8 @@ while True:
         recordingFlag = False
         temp = temp.replace("IsRecording:True","IsRecording:False") # write to config
         activeSwitch = currentSwitchState
-        activeCount = 0
         # Set Recording LED to solid ON
         flag = 1
-
-    elif recordingFlag == True:
-        activeCount += 1
-        if activeCount >= 50:  # number subject to change
-            #Blink Recording LED
-            activeCount = 0
 
             
     # check if we have low sd-card memory (need to blink)
@@ -187,14 +178,7 @@ while True:
             #print("space available is fine (for sd card)")
             flagSD = False
             temp = temp.replace("MemoryLow:True","MemoryLow:False") # write to config
-            sdCount = 0
             flag = 1
-            
-        elif flagSD == True:
-        sdCount += 1
-        if sdCount >= 50:  # number subject to change
-            #Blink Compression LED
-            sdCount = 0
     
     
     if flag == 1:        
