@@ -23,6 +23,7 @@
 #define channel   r12
 #define length    r13
 #define cap_delay r14
+#define inc_val   r15
 
 #define tmp0      r1
 #define tmp1      r2
@@ -43,6 +44,8 @@ START:
   MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
   MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
   MOV   local, 0                    // local vars exist at 0 mem loc
+
+  MOV   inc_val, 1 // DEBUG
 
   //LBBO tmp0, local, 0x14, 4         // eyecatcher check
   //MOV  tmp1, 0xbeef1965
@@ -106,7 +109,7 @@ READ_ALL_FIFO0:
   LSR   channel, value, 16          // extract channel from value
   AND   channel, channel, 0xf       // select last 4 bits from channel
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
-  MOV   value, 0xfff // DEBUG
+  MOV   value, inc_val // DEBUG
   AND   value, value, tmp1          // select last 12 bits from value
   SBBO  value, out_buff, out_off, 4 // store value into out_buffer
   ADD   out_off, out_off, 2         // inc array offset value half to double store
@@ -116,10 +119,13 @@ READ_ALL_FIFO0:
 
 NOTIFY:  
   MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
-  WBS   R31.T30                     // wait for response from ARM
-  CLR   R31.T30                     // clear response
-  // TODO check parameters
-  JMP   INIT_CAPTURE                // resume
+  ADD   inc_val, inc_val, 1 // DEBUG
+WAIT_HERE:  
+  LBBO  tmp4, local, 0x14, 4        // look at continue bit (flag)
+  QBNE  WAIT_HERE, tmp4, 1          // wait for response from ARM
+  MOV   tmp4, 0                     // clear response
+  SBBO  tmp4, local, 0x14, 4
+  JMP   INIT_CAPTURE
 
 CAPTURE_DELAY:
   MOV   tmp0, cap_delay

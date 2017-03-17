@@ -16,6 +16,8 @@ word readFileVal(char filenm[]) {
 }
 
 void main (void) {
+  setbuf(stdout, NULL);
+
   // Global init
   word PRU0RamAddrOff;
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
@@ -46,8 +48,8 @@ void main (void) {
     close(fd);
   }
   
-  halfword samples[PRU_SAMPLES_NUM]; // Init sample var
-  void *virt_addr; 
+  volatile halfword samples[PRU_SAMPLES_NUM]; // Init sample var
+  volatile void *virt_addr; 
   
   int i;
   for (i = 0; i < PRU_SAMPLES_NUM && mapAccess; i++) { // For each sample in pru buffer if we have access
@@ -56,9 +58,9 @@ void main (void) {
     
     if (mapAccess) { // Grab sample
       virt_addr = map_base + (buffOff); //& MAP_MASK);
-      samples[i] = *((halfword *) virt_addr) << 4; // Upscale fto 16bit from 12bit
-      if (samples[i] != 0xfff) { //DEBUG
-        printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, samples[i], virt_addr);
+      samples[i] = *((volatile halfword *) virt_addr) << 4; // Upscale fto 16bit from 12bit
+      if (samples[i] != 0xfff0 && !youAreAFailure) { //DEBUG
+        printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, samples[i], virt_addr, *((word*) virt_addr));
         youAreAFailure = true;
       }
     }

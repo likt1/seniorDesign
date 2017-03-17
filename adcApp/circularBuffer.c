@@ -35,7 +35,7 @@ void *pruThread (void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
-  int r;
+  volatile int r;
 
   // Allocate and init mem
   r = prussdrv_init();
@@ -85,28 +85,28 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-  int run = 2;  
+  int run = 5;  
   while (run > 0) {
     run--;
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
-    
     // Write to buffer
     //pthread_mutex_lock(&pruWrite);
     //if (!noop) {
       printf("map mem to file\n");
+      //struct timespec sleepTime = {0, 500000000}; // sleep for 10 ms
+      //nanosleep(&sleepTime, NULL);
       system("./mem2file");
       printf("temp done\n");
       
       int fd = open("/root/temp_mem", O_RDONLY);
       if (fd == -1) {
         printf("Failed to open temp mapping to fetch adc values.\n");
-        mapAccess = false;
       }
       
-      /* while not end of file
+      /* while file exists and not end of file
         sampleBuffer[next] = sample;
         next++;
         if (next == BUFFER_SIZE) {
@@ -132,7 +132,9 @@ void *pruThread (void *var) {
 
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-    prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
+    //prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
+    PRU_local.flags = 1;
+    r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   }
   // ===============================
 
@@ -335,6 +337,8 @@ void buffer (void) {
 }
 
 void main (void) {
+  setbuf(stdout, NULL);
+
   // Global init
   sampleBuffer = malloc(sizeof(int) * BUFFER_SIZE);
   if (!sampleBuffer) {
