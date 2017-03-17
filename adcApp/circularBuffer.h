@@ -11,7 +11,7 @@ typedef uint8_t byte;       // 8bit
 
 #define PRU_NUM 0 // Using PRU0
 #define SAMPLE_RATE 44100 // Set sample rate
-#define BUFFER_LENGTH 30 // DEBUG length is 30 sec
+#define BUFFER_LENGTH 3 // DEBUG length is 30 sec
 #define BUFFER_SIZE (SAMPLE_RATE*BUFFER_LENGTH) // Set buffer size
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
 
@@ -21,7 +21,7 @@ typedef char bool; // Define bool
 #define true 1
 #define false 0
 
-#define MAP_SIZE 4096UL
+#define MAP_SIZE 16384UL
 #define MAP_MASK (MAP_SIZE - 1)
 
 struct configs {

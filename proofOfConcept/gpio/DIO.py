@@ -1,4 +1,7 @@
-import os.path
+import subprocess
+import os
+
+sd_loc = "/media/store/sd-card"
 
 prevRotaryReading1 = -500000 # arbitrary init val
 prevRotaryReading2 = -500000
@@ -10,8 +13,13 @@ idxType = 0
 count = 0
 debounce = False
 flag = 0
+recordingFlag = -1 # will be set when actively recording
+flagSD = -1
+activeReady = False # will be set when in Active Mode
+activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
 currentSwitchState = 0
-temp = "CompRotary:xx\nTimeRotary:yy\nFootswitch:zz\nMemoryLow:aa\nIsRecording:bb\n" #set template
+
+temp = "[DIO]\nCompRotary=xx\nTimeRotary=yy\nFootswitch=zz\nMemoryLow=aa\nIsRecording=bb\n" #set template
 
 # TODO: enhance to support MemoryLow and IsRecording...
 
@@ -24,13 +32,14 @@ while True:
     if os.path.isfile("/root/conf/DIO.config")
         f = open(settings_file,'r')
         settings = f.readlines()
-        prevRotaryReading2 = settings[0].split(":",1)[1].strip() # compression
-        prevRotaryReading1 = settings[1].split(":",1)[1].strip() # time
-        prev_warning = settings[3].split(":",1)[1].strip()
-        prev_active = settings[4].split(":",1)[1].strip()
-        # ensure good indices
-        idxTime = settingsTime.index(prevRotaryReading2)
-        idxType = settingsType.index(prevRotaryReading1)
+        idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
+        idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
+        currentSwitchState = settings[3].split("=",1)[1].strip() # switch
+        
+        # May be used in future
+        #prev_warning = settings[3].split(":",1)[1].strip()
+        #prev_active = settings[4].split(":",1)[1].strip()
+        
         f.close()
     
     # get rotary value for retro-Time/Active
@@ -83,7 +92,7 @@ while True:
     target3 = open('/sys/class/gpio/gpio69/value' , 'r')
     currentReading = int(target3.read())
     target3.close()
-	
+    
     if prevSwitchReading == -1: # if init, set previous as current
         prevSwitchReading = currentReading
         currentSwitchState = False
@@ -98,7 +107,7 @@ while True:
         count +=1 #debouncing
         if count == 5:
             currentSwitchState = not currentSwitchState
-            temp = temp.replace(str(not currentSwitchState),str(currentSwitchState))  # write to config
+            temp = temp.replace("Footswitch="+str(not currentSwitchState),"Footswitch="+str(currentSwitchState))  # write to config
             count = 0
             debounce = False
             flag = 1
@@ -106,11 +115,71 @@ while True:
     # check if we are actively recording (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
     #if 
+    
+    if recordingFlag == -1: # initiallize IsRecording
+        recordingFlag = False
+        temp = temp.replace("bb","False") # write to config
+        flag = 1
+    
+    if settingsTime[getIndex(idxTime,len(settingsTime))] == "active" and activeReady == False:
+        activeReady = True
+        activeSwitch = currentSwitchState
+        
+    elif settingsTime[getIndex(idxTime,len(settingsTime))] != "active" and activeReady == True:
+        if recordingFlag == True:
+            recordingFlag = False
+            temp = temp.replace("IsRecording=True","IsRecording=False") # write to config
+            activeCount = 0
+            # Set Recording LED to solid ON
+            flag = 1
+        activeReady = False
+        
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == False:
+        recordingFlag = True
+        temp = temp.replace("IsRecording=False","IsRecording=True") # write to config
+        activeSwitch = currentSwitchState
+        flag = 1
+    
+    elif activeReady == True and activeSwitch != currentSwitchState and recordingFlag == True:
+        recordingFlag = False
+        temp = temp.replace("IsRecording=True","IsRecording=False") # write to config
+        activeSwitch = currentSwitchState
+        # Set Recording LED to solid ON
+        flag = 1
 
-
+            
     # check if we have low sd-card memory (need to blink)
     # NOTE: this functionality may be moved to the circular buffer if needed, this is tentative
 
+    if flagSD == -1:
+        flagSD = False
+        temp = temp.replace("aa","False") # write to config
+    
+    if os.path.ismount(sd_loc):
+        #print("discovered sd card")
+
+        df = subprocess.Popen(["df", sd_loc], stdout=subprocess.PIPE)
+
+        output = df.communicate()[0]
+
+        device, size, used, available, percent, mountpoint = \
+            output.decode("UTF-8").split("\n")[1].split()
+
+        # uncomment to audit df return
+        #print(device, size, used, available, percent, mountpoint)
+
+        if int(available) < 300000 and flagSD == False:
+            #print("warn the user, space available (in sd card) is below 30MB")
+            flagSD = True
+            temp = temp.replace("MemoryLow=False","MemoryLow=True") # write to 
+            flag = 1
+            
+        elif int(available) >= 300000 and flagSD == True:
+            #print("space available is fine (for sd card)")
+            flagSD = False
+            temp = temp.replace("MemoryLow=True","MemoryLow=False") # write to config
+            flag = 1
+    
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')

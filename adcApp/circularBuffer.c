@@ -7,6 +7,7 @@
 #include <pruss_intc_mapping.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "circularBuffer.h"
 
@@ -19,6 +20,8 @@ pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
 halfword *sampleBuffer;
+int pruSampNum = 512; // atm arbitrary
+byte *buf;
 word PRU0RamAddrOff;
 
 // Opens up file and parses value in hex
@@ -63,7 +66,7 @@ void *pruThread (void *var) {
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
   PRU_local.samples.offset = 0;
-  PRU_local.samples.length = 7950; // 8000 is 16kb so just a bit lower than that
+  PRU_local.samples.length = 795; // 8000 is 16kb so just a bit lower than that
   PRU_local.cap_delay = 0;
   PRU_local.timer = 0;
   PRU_local.flags = 0;
@@ -86,73 +89,94 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
-  int run = 2;
+  int run = 2;  
   while (run > 0) {
+    bool youAreAFailure = false;
     run--;
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     //printf("Waiting for PRU\n");
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     printf("PRU returned, event number %d.\n", r);
-    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     
-     // Write to buffer
-    pthread_mutex_lock(&pruWrite);
-    if (!noop) {
-      int i;
+    bool mapAccess = true;
+    int fd = open("/dev/mem", O_RDONLY | O_SYNC);
+    if (fd == -1) {
+      printf("Failed to open ram to fetch adc values.\n");
+      mapAccess = false;
+    }
+    printf("fd:%d ", fd);
+    
+    off_t buffOff;
+    buffOff = PRU0RamAddrOff;
+        
+    // Write to buffer
+    //pthread_mutex_lock(&pruWrite);
+    //if (!noop) {
+      int i = 0;
       halfword sample = 0; // Init sample var
-      bool mapAccess = true;
-      int fd = open("/dev/mem", O_RDONLY | O_SYNC);
-      void *map_base, *virt_addr; 
-      off_t buffLoc = PRU0RamAddrOff + PRU_local.samples.addr;
-      if (fd == -1) {
-        printf("Failed to open ram to fetch adc values.\n");
-        mapAccess = false;
-      }
-      for (i = 0; i < PRU_local.samples.length && mapAccess; i++) { // For each sample in pru buffer if we have access
+      while (i < PRU_local.samples.length && mapAccess) { // For each sample in pru buffer if we have access
         // Get sample
-        off_t buffOff = buffLoc + i*2;
-       if (buffOff % 0x1000 == 0 || i == 0) {
-          map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, buffOff & ~MAP_MASK);
-          if (map_base == (void *) -1) {
-            printf("Failed to map memory when accessing ram 0x%X.\n", buffOff);
+        r = lseek(fd, buffOff, SEEK_SET);
+        if (r < 0) {
+          printf("Failed seek at:0x%X returnError:[%s]\n", buffOff, strerror(errno));
+          mapAccess = false;
+        }
+        else {
+          printf("Seeked:0x%X\n", r);
+          r = read(fd, (void *) buf, pruSampNum*2);
+          if (r < 1) {
+            printf("Failed read at:0x%X, returnError:[%s]\n", buffOff, strerror(errno));
             mapAccess = false;
           }
         }
         
-        if (mapAccess) {
-          virt_addr = map_base + (buffOff & MAP_MASK);
-          sample = *((halfword *) virt_addr);
+        int j;
+        for (j = 0; i < PRU_local.samples.length && j < pruSampNum*2 && mapAccess; j += 2) { // Grab sample and put into buffer
+          sample = ((halfword) buf[j]) << 4;
+          sample += (halfword) buf[j + 1];
           if (sample != 0xfff || true) { //DEBUG
-            printf("Debug failed at access:0x%X sample:0x%X virt_addr:0x%X\n", buffOff, sample, virt_addr);
+            printf("Debug at access:%d,%d sample:0x%X Offset:0x%X\n", i, j, sample, buffOff);
+            youAreAFailure = true;
           }
+          
+          // Upscale to 16bit from 12bit
+          /*sampleBuffer[next] = sample * 16;
+          next++;
+          if (next == BUFFER_SIZE) {
+            next = 0;
+          }
+          if (next == start) {
+            save = true;
+            noop = true;
+            break;
+          }*/
+          
+          i++; // inc number of samples read
         }
      
-        // Upscale to 16bit from 12bit
-        sampleBuffer[next] = sample * 16;
-        next++;
-        if (next == BUFFER_SIZE) {
-          next = 0;
-        }
-        if (next == start) {
-          save = true;
-          noop = true;
-          break;
-        }
+        buffOff += pruSampNum;
       }
-      if (fd) {
-        close(fd);
-      }
+    //}
+    //pthread_mutex_unlock(&pruWrite);
+    
+    if (fd) {
+      close(fd);
     }
-    pthread_mutex_unlock(&pruWrite);
-
+   
     // Check to see if we should stop
-    pthread_mutex_lock(&stop);
-    if (!run) {
-      break;
+    //pthread_mutex_lock(&stop);
+    //if (!run) {
+     // break;
+    //}
+    //pthread_mutex_unlock(&stop);
+    
+    printf("map access :%d\n", mapAccess);
+    if (youAreAFailure) {
+       printf("There were errors yo\n");
     }
-    pthread_mutex_unlock(&stop);
 
     // Continue PRU sampling
+    prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
     prussdrv_pru_send_event(ARM_PRU0_INTERRUPT);
   }
   // ===============================
@@ -197,15 +221,17 @@ void buffer (void) {
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
-  int numEpochs = 15;
-  while (running) {
-    if (numEpochs < 0) {
-      running = false; // DEBUG
+  int numEpochs = 350;
+  while (true) {
+    if (numEpochs == 0) {
+      break; // DEBUG
     }
-    if (numEpochs == 5) {
+    if (numEpochs == 50) {
       save = true;
     }
     numEpochs--;
+
+    //printf("epoch:%d\n", numEpochs);
     
     // Read config file and set values
     // Init file read vars
@@ -254,7 +280,7 @@ void buffer (void) {
     if (strlen(newConfig.compRotary) == 0) {
       printf("Empty new comppression rotary string!\n");
     }
-    
+    /*
     // Block write thread to check for save switching?
     pthread_mutex_lock(&pruWrite);
     
@@ -329,7 +355,7 @@ void buffer (void) {
       }
     }
     pthread_mutex_unlock(&pruWrite);
-    
+    */
     curConfig.footSwitch = newConfig.footSwitch;
     strncpy(curConfig.timeRotary, newConfig.timeRotary, CONFIG_SIZE);
     strncpy(curConfig.compRotary, newConfig.compRotary, CONFIG_SIZE);
@@ -358,11 +384,18 @@ void main (void) {
   sampleBuffer = malloc(sizeof(int) * BUFFER_SIZE);
   if (!sampleBuffer) {
     printf("mem alloc failed\n");
+    return;
   }
-  
+  buf = malloc(sizeof(byte) * pruSampNum*2);
+  if (!buf) {
+    printf("mem alloc faled for samp\n");
+    return;
+  }
+
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
 
   buffer();
 
   free(sampleBuffer);
+  free(buf);
 }
