@@ -33,17 +33,17 @@ struct configs {
 };
 
 /* bit data structure:
-0x00 0x00 00 00 00 | 03 addr
-  04   00 00 00 00 | 07 offset
-  08   00 00 00 00 | 0B length
-  0C   00 00 00 00 | 0F cap_delay
-  10   00 00 00 00 | 13 timer
-  14   00 00 00 00 | 17 flags flag check would be FEA51B1E
+0x00 0x00 00 00 00 | addr
+  04   00 00 00 00 | stopFlag
+  08   00 00 00 00 | length
+  0C   00 00 00 00 | cap_delay
+  10   00 00 00 00 | timer
+  14   00 00 00 00 | flags
 */
 struct locals {
   struct {
     word addr;  // address of DDR memory bank
-    word offset;  // byte offset into local memory to capture for `scope mode
+    word stopFlag;  // stop flag
     word length;  // byte size of available DDR mem bank (non-zero triggers `scope capture)
   } samples;
 
