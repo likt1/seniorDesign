@@ -7,7 +7,7 @@ Get the latest BBBW VM
 - provision/setup.sh: add any desired packages / administrative (linux) configurations here
 - Vagrantfile: change any machine settings here
  
-##companionApp
+##InspiradoApp
 Companion app source code
 - key source files of our Android App which communicates via bluetooth
 
@@ -20,3 +20,8 @@ Code to demonstrate capabilities (proofOfConcept and formalization milestones ar
 - sox-audio (audio creation and compression)
 - wifi (embedded wireless script and instructions for network connection)
 
+##adcApp
+Sampling and recording code
+
+##companionApp
+Initial Kivy experimentation.
