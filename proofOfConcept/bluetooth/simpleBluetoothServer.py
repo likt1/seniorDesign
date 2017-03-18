@@ -83,7 +83,7 @@ def accessKeyToServer(parameters):
     access_key = parameters['access_key']    
 
     Config = ConfigParser.ConfigParser()
-    cfgfile = open("config.ini",'w')
+    cfgfile = open("/root/conf/config.ini",'w')
     Config.add_section("Dropbox")
     Config.set('Dropbox','app_key',app_key)
     Config.set('Dropbox','app_secret',app_secret)

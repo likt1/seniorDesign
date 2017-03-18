@@ -30,12 +30,12 @@ while True:
 
     # check file for previous settings (allows phone app to also modify...)    
     if os.path.isfile("/root/conf/DIO.config"):
-        f = open(settings_file,'r')
+        f = open("/root/conf/DIO.config",'r')
         settings = f.readlines()
         idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
         idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
         currentSwitchState = settings[3].split("=",1)[1].strip() # switch
-        currentSwitchState in ["true", "True"]
+        currentSwitchState = currentSwitchState in ["true", "True"]
         
         # May be used in future
         #prev_warning = settings[3].split(":",1)[1].strip()
@@ -106,7 +106,7 @@ while True:
         debounce = not debounce
     elif debounce == True and prevSwitchReading == currentReading:
         count +=1 #debouncing
-        if count == 5:
+        if count == 20:
             currentSwitchState = not currentSwitchState
             temp = temp.replace("Footswitch="+str(not currentSwitchState),"Footswitch="+str(currentSwitchState))  # write to config
             count = 0

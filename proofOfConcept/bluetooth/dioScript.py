@@ -5,7 +5,7 @@ import configparser as ConfigParser
 
 settingsTime = ["active", "30s", "1m", "1m30s", "2m", "2m30s", "3m"]
 settingsTime.reverse()
-ini = "DIO.config"
+ini = "/root/conf/DIO.config"
 
 class MyConfigParser(ConfigParser.ConfigParser):
     def write(self, fp):

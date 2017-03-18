@@ -88,6 +88,21 @@ warning_toggle = 1
 while True:
     f = open(settings_file,'r')
     settings = f.readlines()
+    if len(settings) == 0:
+        continue # expect timing issues...
+
+    # debug purposes:
+    if len(settings) < 6:
+        print("error, file read contained", len(settings), "settings")
+        print("dump = ", settings)
+    for line in settings:
+        if "DIO" in line:
+            continue
+        s = line.split("=")
+        if len(s) < 2: 
+            print("error, setting was too short")
+            print("dump = ", s)
+
     compression_setting = settings[1].split("=",1)[1].strip()
     time_setting = settings[2].split("=",1)[1].strip()
     warning = settings[4].split("=",1)[1].strip()
