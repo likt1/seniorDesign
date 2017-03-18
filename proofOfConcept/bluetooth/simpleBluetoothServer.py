@@ -3,6 +3,7 @@ import bluetooth
 import json
 import time
 import dropbox
+import threading
 import configparser as ConfigParser
 
 import pdb
@@ -110,6 +111,12 @@ def listDIOValues(parameters):
     dio_cmd = prepend + json_string + append
     return dio_cmd 
 
+def listDIOValuesOnInterval(interval, client_sock, parameters):
+    while True:
+        msg = listDIOValues("")
+        client_sock.send(msg.encode('utf-8'))
+        time.sleep(interval)    
+
 def defaultReply():
     return "[!] Not a valid command"
 
@@ -127,7 +134,12 @@ while True:
         time.sleep(.1)
         handleCommand('getAccessKey')
             
+        t = threading.Thread(target=listDIOValuesOnInterval, args=(.3,client_sock,""))
+        t.daemon = True
+        t.start()
+
         while True:
+            #handleCommand('listDIOValues') 
             data = client_sock.recv(1024)
             data = data.decode('UTF-8')
             print("[!] RECEIVED: [%s]" % data)

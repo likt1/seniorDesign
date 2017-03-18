@@ -45,6 +45,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SeekBar;
@@ -58,9 +59,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.lang.reflect.Array;
 import java.nio.charset.CharacterCodingException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
+
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
@@ -122,12 +126,24 @@ public class BluetoothChatFragment extends Fragment {
     ArrayList<Network> networksTest = new ArrayList<Network>(){{add(new Network(0,"Securewireless","peap"));}};
     private ArrayAdapter<Network> mAdapterNetwork = null;
 
+    private SharedPreferences prefs;
+    private SharedPreferences.OnSharedPreferenceChangeListener listener = null;
+
+    private Spinner mSpinnerFormat;
+    private ArrayAdapter<CharSequence> adapterFormat;
+    private SeekBar mSeekControl;
+    private TextView mTvTimeLabel;
+    private String[] settingsTime = new String[]{"3m","2m30s","2m","1m30s","1m","30s","active"};
+    private String[] settingsComp = new String[]{"mp3","wav","flac","ogg"};
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         // Get local Bluetooth adapter
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        prefs = getActivity().getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
+
 
         // If the adapter is null, then Bluetooth is not supported
         if (mBluetoothAdapter == null) {
@@ -137,7 +153,6 @@ public class BluetoothChatFragment extends Fragment {
         }
 
     }
-
 
     @Override
     public void onStart() {
@@ -159,6 +174,7 @@ public class BluetoothChatFragment extends Fragment {
         if (mChatService != null) {
             mChatService.stop();
         }
+        prefs.unregisterOnSharedPreferenceChangeListener(listener);
 
     }
 
@@ -176,6 +192,14 @@ public class BluetoothChatFragment extends Fragment {
                 mChatService.start();
             }
         }
+
+        prefs.registerOnSharedPreferenceChangeListener(listener);
+    }
+
+    @Override
+    public void onPause(){
+        super.onPause();
+        prefs.unregisterOnSharedPreferenceChangeListener(listener);
     }
 
     @Override
@@ -195,37 +219,41 @@ public class BluetoothChatFragment extends Fragment {
         final Spinner mSpinner = (Spinner) getView().findViewById(R.id.spinNetwork);
         final EditText mEditPassword = (EditText) getView().findViewById(R.id.editPassword);
 
-        final SharedPreferences prefs = getActivity().getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
-
-        final SharedPreferences.OnSharedPreferenceChangeListener listener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+        listener = new SharedPreferences.OnSharedPreferenceChangeListener() {
+            @Override
             public void onSharedPreferenceChanged(SharedPreferences prefs, String key) {
                 // Implementation
-                Integer value = prefs.getInt(key, 0);
-                //Toast.makeText(getActivity(), value.toString(), Toast.LENGTH_LONG).show();
-                LinearLayout layoutWifi = (LinearLayout) getActivity().findViewById(R.id.layoutWifi);
-                LinearLayout layoutDropbox = (LinearLayout) getActivity().findViewById(R.id.layoutDropbox);
-                LinearLayout layoutControl = (LinearLayout) getActivity().findViewById(R.id.layoutControl);
-                switch(value) {
-                    case 0:
-                        layoutWifi.setVisibility(VISIBLE);
-                        layoutDropbox.setVisibility(GONE);
-                        layoutControl.setVisibility(GONE);
-                        break;
-                    case 1:
-                        layoutWifi.setVisibility(GONE);
-                        layoutDropbox.setVisibility(VISIBLE);
-                        layoutControl.setVisibility(GONE);
-                        break;
-                    case 2:
-                        layoutWifi.setVisibility(GONE);
-                        layoutDropbox.setVisibility(GONE);
-                        layoutControl.setVisibility(VISIBLE);
-                        break;
+                String value = prefs.getString(key, null);
+                prefs.edit().putString(key,value).apply();
+                switch(key){
+                    case "currentPage":
+                        LinearLayout layoutWifi = (LinearLayout) getActivity().findViewById(R.id.layoutWifi);
+                        LinearLayout layoutDropbox = (LinearLayout) getActivity().findViewById(R.id.layoutDropbox);
+                        LinearLayout layoutControl = (LinearLayout) getActivity().findViewById(R.id.layoutControl);
+                        switch(value) {
+                            case "0":
+                                layoutWifi.setVisibility(VISIBLE);
+                                layoutDropbox.setVisibility(GONE);
+                                layoutControl.setVisibility(GONE);
+                                break;
+                            case "1":
+                                layoutWifi.setVisibility(GONE);
+                                layoutDropbox.setVisibility(VISIBLE);
+                                layoutControl.setVisibility(GONE);
+                                break;
+                            case "2":
+                                layoutWifi.setVisibility(GONE);
+                                layoutDropbox.setVisibility(GONE);
+                                layoutControl.setVisibility(VISIBLE);
+                                break;
+                        }
+                    break;
                 }
             }
         };
 
         prefs.registerOnSharedPreferenceChangeListener(listener);
+
 
         mSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
 
@@ -301,10 +329,30 @@ public class BluetoothChatFragment extends Fragment {
         mSpinner.setAdapter(mAdapterNetwork);
 
 
-        Spinner spinner = (Spinner) getActivity().findViewById(R.id.spinFormat);
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(getActivity(),R.array.file_formats, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        spinner.setAdapter(adapter);
+        mSpinnerFormat = (Spinner) getActivity().findViewById(R.id.spinFormat);
+        adapterFormat = ArrayAdapter.createFromResource(getActivity(),R.array.file_formats, android.R.layout.simple_spinner_item);
+        adapterFormat.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mSpinnerFormat.setAdapter(adapterFormat);
+
+        mSpinnerFormat.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Gson gson = new Gson();
+                JsonObject jsonObject = new JsonObject();
+                jsonObject.addProperty("type","control");
+                JsonObject jsonObjectTemp = new JsonObject();
+                jsonObjectTemp.addProperty("value",mSpinnerFormat.getSelectedItem().toString());
+                jsonObjectTemp.addProperty("property","CompRotary");
+                jsonObject.add("parameters",jsonObjectTemp);
+                String json = gson.toJson(jsonObject);
+                sendMessage(json);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                //Nothing to see here
+            }
+        });
 
         mEditDisplayName = (EditText) getActivity().findViewById(R.id.editDisplayName);
         mEditEmail = (EditText) getActivity().findViewById(R.id.editEmail);
@@ -312,13 +360,38 @@ public class BluetoothChatFragment extends Fragment {
         mEditDisplayName.setText(prefs.getString("dbxName",""));
         mEditEmail.setText(prefs.getString("dbxEmail",""));
 
-        SeekBar mSeekControl = (SeekBar) getActivity().findViewById(R.id.seekControl);
-        mSeekControl.setMax(3);
+
+        Button mBtnDropbox = (Button) getActivity().findViewById(R.id.btnDropbox);
+        mBtnDropbox.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int dummy = 0;
+                Intent intent = new Intent(getActivity(), LoginActivity.class);
+                intent.putExtra("origin","Dropbox_Button");
+                startActivity(intent);
+            }
+        });
+
+        mTvTimeLabel = (TextView) getActivity().findViewById(R.id.tvTimeLabel);
+
+        mSeekControl = (SeekBar) getActivity().findViewById(R.id.seekControl);
+        mSeekControl.setMax(6);
+        mSeekControl.setProgress(6);
         mSeekControl.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                Gson gson = new Gson();
+                JsonObject jsonObject = new JsonObject();
+                jsonObject.addProperty("type","control");
+                JsonObject jsonObjectTemp = new JsonObject();
+                jsonObjectTemp.addProperty("value",Integer.toString(progress));
+                jsonObjectTemp.addProperty("property","TimeRotary");
+                jsonObject.add("parameters",jsonObjectTemp);
+                String json = gson.toJson(jsonObject);
+                sendMessage(json);
 
-                //sendMessage("TEST");
+
+                mTvTimeLabel.setText(" - " + settingsTime[progress]);
             }
 
             @Override
@@ -332,9 +405,23 @@ public class BluetoothChatFragment extends Fragment {
             }
         });
 
+        Button mButtonControl = (Button) getActivity().findViewById(R.id.btnControl);
+        mButtonControl.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Gson gson = new Gson();
+                JsonObject jsonObject = new JsonObject();
+                jsonObject.addProperty("type","control");
+                JsonObject jsonObjectTemp = new JsonObject();
+                jsonObjectTemp.addProperty("value","toggle");
+                jsonObjectTemp.addProperty("property","Footswitch");
+                jsonObject.add("parameters",jsonObjectTemp);
+                String json = gson.toJson(jsonObject);
+                sendMessage(json);
+            }
+        });
 
     }
-
 
     String encrypt(String text){
         //TODO Fix this garbage function
@@ -635,10 +722,7 @@ public class BluetoothChatFragment extends Fragment {
                         JsonObject o = parser.parse(readMessage).getAsJsonObject();
                         String type = o.get("type").getAsString();
 
-                        /*Context context = getActivity().getApplicationContext();
-                        int duration = Toast.LENGTH_SHORT;
-                        Toast toast = Toast.makeText(context, type, duration);
-                        toast.show();*/
+                        //Toast.makeText(getActivity().getApplicationContext(), type, Toast.LENGTH_LONG).show();
 
                         switch(type){
                             case "listNetworks":
@@ -661,7 +745,6 @@ public class BluetoothChatFragment extends Fragment {
                                 break;
                             case "getAccessKey":
                                 //Toast.makeText(getActivity().getApplicationContext(), "I JUST GOT A MESSAGE THAT I SHOULD SEND AN ACCESS KEY", Toast.LENGTH_LONG).show();
-                                SharedPreferences prefs = getActivity().getSharedPreferences("com.example.android.inspirado", Context.MODE_PRIVATE);
                                 String accessToken = prefs.getString("access-token", null);
 
                                 if (accessToken == null) {
@@ -677,6 +760,20 @@ public class BluetoothChatFragment extends Fragment {
                                     String json = gson.toJson(jsonObject);
                                     sendMessageDummy(json,"Dummy");
                                 }
+                                break;
+                            case "listDIO":
+                                JsonObject dio = o.get("settings").getAsJsonObject();
+                                String comp = dio.get("CompRotary").getAsString();
+                                String time = dio.get("TimeRotary").getAsString();
+
+                                int idx = Arrays.asList(settingsTime).indexOf(time);
+                                int idx2 = adapterFormat.getPosition(comp.toUpperCase());
+
+                                mSeekControl.setProgress(idx);
+
+                                adapterFormat.notifyDataSetChanged();
+                                mSpinnerFormat.setSelection(idx2, false);
+                                mSpinnerFormat.notify();
 
                                 break;
                             default:
