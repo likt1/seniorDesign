@@ -29,7 +29,7 @@ def getIndex(val, length):
 while True:
 
     # check file for previous settings (allows phone app to also modify...)    
-    if os.path.isfile("/root/conf/DIO.config")
+    if os.path.isfile("/root/conf/DIO.config"):
         f = open(settings_file,'r')
         settings = f.readlines()
         idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
