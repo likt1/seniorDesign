@@ -28,7 +28,7 @@
 #define tmp1      r2
 #define tmp2      r3
 #define tmp3      r4
-#define tmp4      r5
+#define tmp4      r5    // flag lookup tmp
 
 // 1 word is 4 bytes
 
@@ -90,6 +90,9 @@ BEG_CAPTURE:
   QBNE  CAPTURE_DELAY, cap_delay, 0 // check delay
 
 SAMPLE:
+  LBBO  tmp4, local, 0x04, 4        // look at continue bit (offset)
+  QBNE  EXIT, tmp4, 0               // wait for response from ARM
+  
   MOV   tmp0, 0x1fe
   SBBO  tmp0, adc_, STEPCONFIG, 4   // write to STEPCONFIG to trigger cap
 
@@ -129,11 +132,11 @@ DELAY_LOOP:
   QBNE  DELAY_LOOP, tmp0, 0
   JMP   SAMPLE
 
-QUIT:
 // debug
+QUIT:
   MOV   tmp4, value
   SBBO  tmp4, local, 0x4, 4        // offset of local should be beef now
   MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
   WBS   R31.T30                     // wait for response from ARM
+EXIT:
   HALT
-// debug

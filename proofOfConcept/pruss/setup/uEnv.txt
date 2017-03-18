@@ -49,11 +49,8 @@ cmdline=coherent_pool=1M quiet cape_universal=enable
 
 ## ADDED
 
-## Enable the ADC
-cape_enable=bone_capemgr.enable_partno=BB-ADC
-
-## Enable the universala cape so that all our stuff works
-cape_enable=bone_capemgr.enable_partno=cape-universala
+## Enable the ADC and the universala cape so that all our stuff works
+cape_enable=bone_capemgr.enable_partno=BB-ADC,cape-universala
 
 ##
 
