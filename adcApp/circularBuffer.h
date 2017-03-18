@@ -15,7 +15,7 @@ typedef uint8_t byte;       // 8bit
 #define BUFFER_SIZE (SAMPLE_RATE*RECORD_LENGTH) // Set buffer size
 #define CONFIG_SIZE 10 // Config strings are 9 chars long + \0
 #define PRU_SAMPLES_NUM 7950  // 8000 is 16kb so just a bit lower than that
-#define PRU_DELAY 0 // Amount of delay in PRU cycles
+#define PRU_DELAY 1980 // Amount of delay in PRU cycles
 
 #define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
 

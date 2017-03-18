@@ -130,7 +130,7 @@ void *pruThread (void *var) {
       void * buffOff = map_base + PRU_local.samples.addr;
       const void *virt_addr = buffOff;
       memcpy(pruSamples, virt_addr, PRU_SAMPLES_NUM*2);
-      printf("Copied:0x%X->0x%X amt:%d", virt_addr, pruSamples, PRU_SAMPLES_NUM*2);
+      printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, PRU_SAMPLES_NUM*2);
     }
 
     // Start timer debug
