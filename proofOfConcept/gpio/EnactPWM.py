@@ -1,8 +1,9 @@
+# NOTE: need to hook up wires and run sh pwm-pin-config.sh
 import time
+import EnablePWM 
 
-# NOTE: requires enable-pwm.py to be run, also need to hook up wires and run
-# config-pin <pin_num> pwm
-# the valid pin nums are displayed after running enable-pwm
+# get correct system pwm-chips and enable them accordingly
+pwm_chip_dict = EnablePWM.setupPWM()
 
 # store some rgb color presets
 off = [0, 0, 0]
@@ -20,19 +21,17 @@ color_dict_2 = {"active": red, "30s": orange, "1m": yellow, "1m30s": green, "2m"
 settings_file = "/root/conf/DIO.config"
 
 # setup each pin
-sys_folder = "/sys/class/pwm/"
-
-pwm_1A = sys_folder + "pwmchip4/pwm0/" #B
-pwm_2A = sys_folder + "pwmchip6/pwm0/" #G
-pwm_2B = sys_folder + "pwmchip6/pwm1/" #R
+pwm_1A = pwm_chip_dict['PWM1A'] #B
+pwm_2A = pwm_chip_dict['PWM2A'] #G
+pwm_2B = pwm_chip_dict['PWM2B'] #R
 RGB_1 = [pwm_2B, pwm_2A, pwm_1A] 
 
-pwm_0A = sys_folder + "pwmchip2/pwm0/" #B
-pwm_0B = sys_folder + "pwmchip2/pwm1/" #G
-pwm_1B = sys_folder + "pwmchip4/pwm1/" #R
+pwm_0A = pwm_chip_dict['PWM0A'] #B
+pwm_0B = pwm_chip_dict['PWM0B'] #G
+pwm_1B = pwm_chip_dict['PWM1B'] #R
 RGB_2 = [pwm_1B, pwm_0B, pwm_0A]
 
-# enable and setup each pin
+# ensure each pin is enabled and setup
 for RGB_LED in [RGB_1, RGB_2]:
     for pwm_pin in RGB_LED:
         enable_tmp = open(pwm_pin + "enable", 'w')
@@ -88,8 +87,11 @@ warning_toggle = 1
 while True:
     f = open(settings_file,'r')
     settings = f.readlines()
+
+    # if a file is writing concurently with our read, we may get an empty file
+    # in this case just continue iterating until a valid file is read
     if len(settings) == 0:
-        continue # expect timing issues...
+        continue 
 
     # debug purposes:
     if len(settings) < 6:
@@ -135,3 +137,4 @@ while True:
         warning_count -= 1
     
     time.sleep(0.2)
+
