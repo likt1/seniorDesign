@@ -1,5 +1,9 @@
 # Senior Design Project Repo: Inspirado 
 
+##finalApp
+- All the latest changes should be pushed here
+- Meant for integration of components etc.
+
 ##VM
 Get the latest BBBW VM
 - Debian (jessie) 8.6 x86
