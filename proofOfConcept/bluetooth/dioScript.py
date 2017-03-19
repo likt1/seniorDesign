@@ -14,7 +14,7 @@ class MyConfigParser(ConfigParser.ConfigParser):
             fp.write("[%s]\n" % ConfigParser.DEFAULTSECT)
             for (key, value) in self._defaults.items():
                 fp.write("%s=%s\n" % (key, str(value).replace('\n', '\n\t')))
-            fp.write("\n")
+        
         for section in self._sections:
             fp.write("[%s]\n" % section)
             for (key, value) in self._sections[section].items():
@@ -23,7 +23,6 @@ class MyConfigParser(ConfigParser.ConfigParser):
                 if (value is not None) or (self._optcre == self.OPTCRE):
                     key = "=".join((key, str(value).replace('\n', '\n\t')))
                 fp.write("%s\n" % key)
-            fp.write("\n")
 
 class DIO(object):
     def __init__(self,CompRotary,TimeRotary,Footswitch, MemoryLow, IsRecording):

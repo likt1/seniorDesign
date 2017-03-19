@@ -19,7 +19,7 @@ activeReady = False # will be set when in Active Mode
 activeSwitch = False # will initialize to value of currentSwitchState when active Recording is set
 currentSwitchState = 0
 
-temp = "[DIO]\nCompRotary=xx\nTimeRotary=yy\nFootswitch=zz\nMemoryLow=aa\nIsRecording=bb\n" #set template
+temp = "[DIO]\nCompRotary=xx\nTimeRotary=yy\nFootswitch=zz\nMemoryLow=aa\nIsRecording=bb" #set template
 
 # TODO: enhance to support MemoryLow and IsRecording...
 
@@ -32,6 +32,10 @@ while True:
     if os.path.isfile("/root/conf/DIO.config"):
         f = open("/root/conf/DIO.config",'r')
         settings = f.readlines()
+
+        if len(settings) < 6:
+            continue
+
         idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
         idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
         currentSwitchState = settings[3].split("=",1)[1].strip() # switch
@@ -184,7 +188,7 @@ while True:
     
     if flag == 1:        
         target = open('/root/conf/DIO.config', 'w')
-        target.write(temp)
+        target.write(temp.strip())
         target.close()
         flag = 0        
             
