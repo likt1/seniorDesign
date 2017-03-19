@@ -266,6 +266,7 @@ void buffer (void) {
     // Read config file and set values
     // Init file read vars
     FILE *file = fopen("/root/conf/DIO.config", "r");
+    int numLines = 0;
     char strBuf[40];
     char* lbl;
     char* val;
@@ -296,6 +297,17 @@ void buffer (void) {
             newConfig.footSwitch = true;
           }
         }
+        else if (strcmp(lbl, "MemoryLow") == 0) {
+          if (strcmp(val, "True") == 0) {
+            newConfig.footSwitch = true;
+          }
+        }
+        else if (strcmp(lbl, "IsRecording") == 0) {
+          if (strcmp(val, "True") == 0) {
+            newConfig.footSwitch = true;
+          }
+        }
+        numLines++;
       }
       fclose(file); /*
       printf("%s\n", newConfig.compRotary);
@@ -304,6 +316,10 @@ void buffer (void) {
     }
     
     // Check to see we got stuff
+    if (numLines < 6) {
+      printf("Not enough settings were found!\n");
+      continue; // re iterate the infinite loop (eventually should have good reading)
+    }
     if (strlen(newConfig.timeRotary) == 0) {
       printf("Empty new time rotary string!\n");
     }
