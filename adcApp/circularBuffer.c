@@ -8,7 +8,6 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
-#include <errno.h>
 
 #include "circularBuffer.h"
 
@@ -125,7 +124,7 @@ void *pruThread (void *var) {
     // Stop timer debug
     int diff = GetUTimeStamp() - startTime;
     printf("PRU returned, event number %d.\n", r);
-
+    
     if (!noop) {
       // Copy ram to local buffer
       void * buffOff = map_base + PRU_local.samples.addr;
@@ -472,18 +471,11 @@ void main (void) {
   pruSamples = malloc(HW_SIZE*PRU_SAMPLES_NUM);
   if (!(sampleBuffer && pruSamples)) {
     printf("mem alloc failed\n");
-    return;
   }
-  buf = malloc(sizeof(byte) * pruSampNum*2);
-  if (!buf) {
-    printf("mem alloc faled for samp\n");
-    return;
-  }
-
+  
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
 
   buffer();
 
   free(sampleBuffer);
-  free(buf);
 }
