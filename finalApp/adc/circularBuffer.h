@@ -13,7 +13,7 @@ typedef uint8_t byte;       // 8bit
 #define HW_SIZE sizeof(halfword)
 #define PRU_NUM 0 // Using PRU0
 #define SAMPLE_RATE 44100 // Set sample rate
-#define RECORD_LENGTH 5 // DEBUG length is 30 sec
+#define RECORD_LENGTH 60 // DEBUG length is 30 sec
 #define BUFFER_SIZE (SAMPLE_RATE*RECORD_LENGTH) // Set buffer size
 #define PRU_SAMPLES_NUM 7950  // 8000 is 16kb so just a bit lower than that
 #define PRU_DELAY 1980 // Amount of delay in PRU cycles
@@ -23,6 +23,7 @@ typedef uint8_t byte;       // 8bit
 typedef char bool; // Define bool
 #define true 1
 #define false 0
+#define init 2
 
 #define MAP_SIZE 16384UL
 #define MAP_MASK (MAP_SIZE - 1)

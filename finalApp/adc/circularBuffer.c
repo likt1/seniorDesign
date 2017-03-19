@@ -232,6 +232,7 @@ void *pruThread(void *var) {
 
 void cleanupThread() {
   // Tell PRU to stop
+  printf("Cleaning PRU vars\n");
   PRU_local.samples.stopFlag = 1;
   PRU_local.flags = 1;
   prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
@@ -256,7 +257,7 @@ void buffer(void) {
   // ===============================
   bool running = true;
   struct configs curConfig; // TODOM set defaults?
-  curConfig.footSwitch = false;
+  curConfig.footSwitch = init;
   strncpy(curConfig.timeRotary, "\0", CONFIG_SIZE);
   strncpy(curConfig.compRotary, "\0", CONFIG_SIZE);
   
@@ -285,28 +286,18 @@ void buffer(void) {
   // MAIN CONFIG FILE LOOP 
   // ===============================
   bool testExit = true;
-  int numEpochs = 350;
   while (testExit) {
-    if (numEpochs == 50) {
-      save = true;
-    }
-    if (numEpochs > 0) {
-      numEpochs--;
-    }
     if (exitProg) {
       testExit = false;
       save = true;
     }
 
-    //printf("epoch:%d\n", numEpochs);
-    
     // Read config file and set values
     // Init file read vars
     FILE *file = fopen("/root/conf/DIO.config", "r");
     int numLines = 0;
     char strBuf[40];
-    char* lbl;
-    char* val;
+    char *lbl, *val;
     const char delim[2] = "=";
     
     // Init config file val vars
@@ -368,8 +359,8 @@ void buffer(void) {
     pthread_mutex_lock(&pruWrite);
     
     // Handle toggle of footswitch
-    if (newConfig.footSwitch != curConfig.footSwitch) {
-      if (start = -1 && strcmp(newConfig.timeRotary, "active") == 0) { // If we are active and we are not started 
+    if (curConfig.footSwitch != init && newConfig.footSwitch != curConfig.footSwitch) {
+      if (start == -1 && strcmp(newConfig.timeRotary, "active") == 0) { // If we are active and we are not started 
         start = next; // start active
       }
       else { // save buffer
@@ -391,7 +382,7 @@ void buffer(void) {
       printf("Saving output file\n");
       if (file) {
         // Set write head start
-        if (start == -1) { // if passive get prev
+        if (start < 0) { // if passive get prev
           if (strcmp(newConfig.timeRotary, "30s") == 0) {
             start = next - 30*SAMPLE_RATE;
           }
@@ -407,12 +398,16 @@ void buffer(void) {
           else if (strcmp(newConfig.timeRotary, "2m30s") == 0) {
             start = next - 150*SAMPLE_RATE;
           }
-          //else { // full 3 min
-          if (start < 0) { // DEBUG MAX MINUTES ONLY
+          else { // full buffer (3 min)
             start = next;
           }
           
-          if (start < 0) { // Handle negative numbers
+          printf("new time rotary:%s\n", newConfig.timeRotary);
+
+          // If value is negative circle back
+          // If the value is still negative after the first loop,
+          //   output signal is undefined.
+          while (start < 0) {
             start += BUFFER_SIZE;
           }
         }
