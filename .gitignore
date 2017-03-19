@@ -64,3 +64,4 @@ VM/.vagrant/*
 **/*.bin
 **/circularBuffer
 **/mem2file
+**/*.o
