@@ -5,6 +5,7 @@ import subprocess
 import re
 import getpass
 import json
+import time
 
 import pdb
 
@@ -121,7 +122,7 @@ def scanNetworks(log_file = ''):
             i -= 1
         i += 1
     networks_file.close()
-    return network_items
+    return [i for i in network_items if i.security != 'open']
 
 def showNetworks(log_file, network_items):
     print(str(len(network_items)) + " networks are available: ")
@@ -185,14 +186,13 @@ def configSettings(log_file, ssid, skey):
     else:
         log_file.write("error, could not find " + settings_file_name + " for " + ssid + "\n")
 
-def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
+def configureNetwork(log_file, selected_network, network_id="", pass_phrase=""):
     #pdb.set_trace()
     log_file.close()    
     log = open("log","ab")
-    pass_phrase = ""
     
     # based on selected security, (local only) prompt for username / password...
-    if not passphrase and not network_id:
+    if not pass_phrase and not network_id:
         if "peap" in selected_network.security:
             network_id = input("please enter your network identity (dont care for single_auth networks): ");
         if "open" not in selected_network.security:
@@ -238,19 +238,19 @@ def configureNetwork(log_file, selected_network, network_id="", passphrase=""):
     log_file.close()
     log = open("log","wb")
 
-    # validate it worked / re-attempt connection
-    print("rescanning networks...")
-    command = ["connmanctl", "scan","wifi"]
-    subprocess.call(command,stdout=log,stderr=log)
-    command = ["connmanctl","services"]
-    subprocess.call(command,stdout=log,stderr=log)
-    
     print("Attempting connection...")
     command = ["connmanctl","connect",selected_network.serviceKey]
     subprocess.call(command,stdout=log,stderr=log)
 
+    # validate it worked / re-attempt connection\
+    time.sleep(5)
+    network_items = scanNetworks(log_file)
+
+
     log.close()
     log_file = open("log","a")
+
+    return [i for i in network_items if i.ssid == selected_network.ssid]    
 
 # main...
 # setupWifi()

@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
+#include <errno.h>
 
 #include "circularBuffer.h"
 
@@ -20,7 +21,12 @@ pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
 halfword *sampleBuffer;
+<<<<<<< HEAD
 halfword *pruSamples;
+=======
+int pruSampNum = 512; // atm arbitrary
+byte *buf;
+>>>>>>> 3780934ecaaacc06d345bb51ff76204637f75968
 word PRU0RamAddrOff;
 struct locals PRU_local;
 
@@ -117,7 +123,14 @@ void *pruThread (void *var) {
 
   // MAIN PRU LOOP
   // ===============================
+<<<<<<< HEAD
   while (true) {
+=======
+  int run = 2;  
+  while (run > 0) {
+    bool youAreAFailure = false;
+    run--;
+>>>>>>> 3780934ecaaacc06d345bb51ff76204637f75968
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     
@@ -125,6 +138,7 @@ void *pruThread (void *var) {
     int diff = GetUTimeStamp() - startTime;
     printf("PRU returned, event number %d.\n", r);
     
+<<<<<<< HEAD
     if (!noop) {
       // Copy ram to local buffer
       void * buffOff = map_base + PRU_local.samples.addr;
@@ -194,6 +208,83 @@ void *pruThread (void *var) {
       float sec = diff / 1000000.0;
       float rate = ((float) PRU_local.samples.length) / sec;
       printf("Calculated sample rate:%.2f diff:%d\n", rate, diff);
+=======
+    bool mapAccess = true;
+    int fd = open("/dev/mem", O_RDONLY | O_SYNC);
+    if (fd == -1) {
+      printf("Failed to open ram to fetch adc values.\n");
+      mapAccess = false;
+    }
+    printf("fd:%d ", fd);
+    
+    off_t buffOff;
+    buffOff = PRU0RamAddrOff;
+        
+    // Write to buffer
+    //pthread_mutex_lock(&pruWrite);
+    //if (!noop) {
+      int i = 0;
+      halfword sample = 0; // Init sample var
+      while (i < PRU_local.samples.length && mapAccess) { // For each sample in pru buffer if we have access
+        // Get sample
+        r = lseek(fd, buffOff, SEEK_SET);
+        if (r < 0) {
+          printf("Failed seek at:0x%X returnError:[%s]\n", buffOff, strerror(errno));
+          mapAccess = false;
+        }
+        else {
+          printf("Seeked:0x%X\n", r);
+          r = read(fd, (void *) buf, pruSampNum*2);
+          if (r < 1) {
+            printf("Failed read at:0x%X, returnError:[%s]\n", buffOff, strerror(errno));
+            mapAccess = false;
+          }
+        }
+        
+        int j;
+        for (j = 0; i < PRU_local.samples.length && j < pruSampNum*2 && mapAccess; j += 2) { // Grab sample and put into buffer
+          sample = ((halfword) buf[j]) << 4;
+          sample += (halfword) buf[j + 1];
+          if (sample != 0xfff || true) { //DEBUG
+            printf("Debug at access:%d,%d sample:0x%X Offset:0x%X\n", i, j, sample, buffOff);
+            youAreAFailure = true;
+          }
+          
+          // Upscale to 16bit from 12bit
+          /*sampleBuffer[next] = sample * 16;
+          next++;
+          if (next == BUFFER_SIZE) {
+            next = 0;
+          }
+          if (next == start) {
+            save = true;
+            noop = true;
+            break;
+          }*/
+          
+          i++; // inc number of samples read
+        }
+     
+        buffOff += pruSampNum;
+      }
+    //}
+    //pthread_mutex_unlock(&pruWrite);
+    
+    if (fd) {
+      close(fd);
+    }
+   
+    // Check to see if we should stop
+    //pthread_mutex_lock(&stop);
+    //if (!run) {
+     // break;
+    //}
+    //pthread_mutex_unlock(&stop);
+    
+    printf("map access :%d\n", mapAccess);
+    if (youAreAFailure) {
+       printf("There were errors yo\n");
+>>>>>>> 3780934ecaaacc06d345bb51ff76204637f75968
     }
   }
   // ===============================
@@ -437,11 +528,18 @@ void main (void) {
   pruSamples = malloc(sizeof(halfword) * PRU_SAMPLES_NUM);
   if (!(sampleBuffer && pruSamples)) {
     printf("mem alloc failed\n");
+    return;
   }
-  
+  buf = malloc(sizeof(byte) * pruSampNum*2);
+  if (!buf) {
+    printf("mem alloc faled for samp\n");
+    return;
+  }
+
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
 
   buffer();
 
   free(sampleBuffer);
+  free(buf);
 }
