@@ -143,8 +143,8 @@ void *pruThread (void *var) {
       // Copy ram to local buffer
       void * buffOff = map_base + PRU_local.samples.addr;
       const void *virt_addr = buffOff;
-      memcpy(pruSamples, virt_addr, PRU_SAMPLES_NUM*2);
-      printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, PRU_SAMPLES_NUM*2);
+      memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
+      printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
     }
 
     // Start timer debug
@@ -168,34 +168,68 @@ void *pruThread (void *var) {
     bool checkTimer = false; // set to true to skip buffer save and measure PRU timing only
     if (!checkTimer) { // replace with noop in production
       // Write to buffer
-      bool youAreAFailure = false;
+      //bool youAreAFailure = false;
       pthread_mutex_lock(&pruWrite); 
       
       int i;
       // For each pru sample in buffer
-      for (i = 0; i < PRU_SAMPLES_NUM; i++) {
-        // Save sample to circular bufferot end of file
+      /*for (i = 0; i < PRU_SAMPLES_NUM; i++) {
+        // Save sample to circular buffer at end of file
         sampleBuffer[next] = pruSamples[i] << 4; // Upscale to 16b from 12b
         next++;
         if (next == BUFFER_SIZE) {
           next = 0;
         }
-        if (next == start) {
-          printf("start val is:%d\n", start);
-          save = true;
-          noop = true;
-          break;
-        }
-
-        //if (sample != 0xfff0) { //DEBUG
-        //  printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
-        //  youAreAFailure = true;
-        //}
-
-        //if (i == PRU_local.samples.length - 1) {
-        //  printf("i:%d addr:0x%X virt_addr:0x%X\n", i, buffOff, virt_addr);
-        //}
+        
+      }*/
+      
+      // Mass save into circularBuffer
+      int bufferLim;
+      bool noOverflow = false;
+      if (start > next) {
+        bufferLim = start;
+        noOverflow = true;
       }
+      else {
+        bufferLim = BUFFER_SIZE;
+      }
+      
+      int freeSpace = bufferLim - next;
+      int overflow = freeSpace - PRU_SAMPLES_NUM;
+      
+      if (overflow >= 0) {
+        memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
+        next += PRU_SAMPLES_NUM;
+      }
+      else {
+        memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*freeSpace);
+        if (noOverflow) {
+          next = start;
+        }
+        else {
+          int absOverflow = (-1)*overflow;
+          memcpy(sampleBuffer, &pruSamples[freeSpace], HW_SIZE*absOverflow);
+          next = absOverflow;
+        }
+      }
+      
+      if (next == start) {
+        printf("start val is:%d\n", start);
+        save = true;
+        noop = true;
+        break;
+      }
+      
+      // These need to be switched to work
+      //if (sample != 0xfff0) { //DEBUG
+      //  printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
+      //  youAreAFailure = true;
+      //}
+
+      //if (i == PRU_local.samples.length - 1) {
+      //  printf("i:%d addr:0x%X virt_addr:0x%X\n", i, buffOff, virt_addr);
+      //}
+      
       pthread_mutex_unlock(&pruWrite);
       
       //if (youAreAFailure) {
@@ -524,8 +558,8 @@ void main (void) {
   setbuf(stdout, NULL);
 
   // Global init
-  sampleBuffer = malloc(sizeof(halfword) * BUFFER_SIZE);
-  pruSamples = malloc(sizeof(halfword) * PRU_SAMPLES_NUM);
+  sampleBuffer = malloc(HW_SIZE*BUFFER_SIZE);
+  pruSamples = malloc(HW_SIZE*PRU_SAMPLES_NUM);
   if (!(sampleBuffer && pruSamples)) {
     printf("mem alloc failed\n");
     return;
