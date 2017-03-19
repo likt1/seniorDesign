@@ -3,13 +3,19 @@
 #include <string.h>
 #include <pthread.h>
 #include <time.h>
+#include <signal.h>
+
 #include <prussdrv.h>
 #include <pruss_intc_mapping.h>
+
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/time.h>
 
 #include "circularBuffer.h"
+
+// Volatile Exit Flag
+static volatile bool exitProg = 0;
 
 // Init globals
 bool run = true;
@@ -19,10 +25,17 @@ pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
+int fd;
+void *map_base;
 halfword *sampleBuffer;
 halfword *pruSamples;
 word PRU0RamAddrOff;
 struct locals PRU_local;
+
+// Exit interrupt function
+void exitInterrupt(int signum) {
+  exitProg = 1;
+}
 
 // Opens up file and parses value in hex
 word readFileVal(char filenm[]) {
@@ -41,14 +54,14 @@ int GetUTimeStamp() {
   return tv.tv_usec;
 }
 
-void *pruThread (void *var) {
+void *pruThread(void *var) {
   // INIT
   // ===============================
   printf("pru Thread active\n");
   volatile int r;
 
   // Set up ram memory mapping 
-  int fd = open("/dev/mem", O_RDONLY);
+  fd = open("/dev/mem", O_RDONLY);
   if (fd == -1) {
     printf("Failed to open ram to fetch adc values.\n");
     return NULL;
@@ -58,7 +71,6 @@ void *pruThread (void *var) {
   mapLoc = PRU0RamAddrOff;
   //printf("mapLoc:0x%X ", mapLoc);
       
-  void *map_base;
   map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
   if (map_base == (void *) -1) {
     printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
@@ -123,14 +135,14 @@ void *pruThread (void *var) {
     
     // Stop timer debug
     int diff = GetUTimeStamp() - startTime;
-    printf("PRU returned, event number %d.\n", r);
+    // printf("PRU returned, event number %d.\n", r);
     
     if (!noop) {
       // Copy ram to local buffer
       void * buffOff = map_base + PRU_local.samples.addr;
       const void *virt_addr = buffOff;
       memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
-      printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
+      // printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
     }
 
     // Start timer debug
@@ -143,13 +155,6 @@ void *pruThread (void *var) {
     if (r < 0) {
       printf("Failed to continue PRU!\n");
     }
-    
-    // Check to see if we should stop
-    pthread_mutex_lock(&stop);
-    if (!run) {
-      break;
-    }
-    pthread_mutex_unlock(&stop);
  
     bool checkTimer = false; // set to true to skip buffer save and measure PRU timing only
     if (!checkTimer) { // replace with noop in production
@@ -158,17 +163,6 @@ void *pruThread (void *var) {
       pthread_mutex_lock(&pruWrite); 
       
       int i;
-      // For each pru sample in buffer
-      /*for (i = 0; i < PRU_SAMPLES_NUM; i++) {
-        // Save sample to circular buffer at end of file
-        sampleBuffer[next] = pruSamples[i] << 4; // Upscale to 16b from 12b
-        next++;
-        if (next == BUFFER_SIZE) {
-          next = 0;
-        }
-        
-      }*/
-      
       // Mass save into circularBuffer
       int bufferLim;
       bool noOverflow = false;
@@ -206,7 +200,7 @@ void *pruThread (void *var) {
         break;
       }
       
-      // These need to be switched to work
+      // Variables need to be updated for these lines to work now
       //if (sample != 0xfff0) { //DEBUG
       //  printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
       //  youAreAFailure = true;
@@ -232,10 +226,15 @@ void *pruThread (void *var) {
   }
   // ===============================
 
+  printf("pru Thread stopped\n");
+  return NULL;
+}
+
+void cleanupThread() {
   // Tell PRU to stop
   PRU_local.samples.stopFlag = 1;
   PRU_local.flags = 1;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
+  prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   
   // Disable PRU and close memory mappings
   prussdrv_pru_disable(PRU_NUM);
@@ -248,12 +247,9 @@ void *pruThread (void *var) {
   if (fd) {
     close(fd);
   }
-
-  printf("pru Thread stopped\n");
-  return NULL;
 }
 
-void buffer (void) {
+void buffer(void) {
   printf("Circular Buffer program start\n");
 
   // INIT
@@ -267,10 +263,6 @@ void buffer (void) {
   struct timespec sleepTime = {0, 10000000}; // sleep for 10 ms
   
   // Init mutex
-  if (pthread_mutex_init(&stop, NULL) != 0) {
-    printf("Failed to init mutex stop\n");
-    return;
-  }
   if (pthread_mutex_init(&pruWrite, NULL) != 0) {
     printf("Failed to init mutex pruWrite\n");
     return;
@@ -280,20 +272,31 @@ void buffer (void) {
   pthread_t threadID;
   if (pthread_create(&threadID, NULL, pruThread, NULL) != 0) {
     printf("Failed to init pru thread obj\n");
+    pthread_mutex_destroy(&pruWrite);
+    return;
+  }
+  if (pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL) != 0) {
+    printf("Failed to configure pru cancel type\n");
+    pthread_mutex_destroy(&pruWrite);
+    return;
   }
   // ===============================
   
   // MAIN CONFIG FILE LOOP 
   // ===============================
+  bool testExit = true;
   int numEpochs = 350;
-  while (true) {
-    if (numEpochs == 0) {
-      break; // DEBUG
-    }
+  while (testExit) {
     if (numEpochs == 50) {
       save = true;
     }
-    numEpochs--;
+    if (numEpochs > 0) {
+      numEpochs--;
+    }
+    if (exitProg) {
+      testExit = false;
+      save = true;
+    }
 
     //printf("epoch:%d\n", numEpochs);
     
@@ -304,7 +307,7 @@ void buffer (void) {
     char strBuf[40];
     char* lbl;
     char* val;
-    const char delim[2] = ":";
+    const char delim[2] = "=";
     
     // Init config file val vars
     struct configs newConfig;
@@ -448,18 +451,15 @@ void buffer (void) {
   }
   // ===============================
   
-  // Tell thread to stop
-  printf("stopping thread\n");
-  pthread_mutex_lock(&stop);
-  run = false;
-  pthread_mutex_unlock(&stop);
-  
-  // Wait for thread to end
-  printf("wait for thread to end\n");
+  // Grabbing the write mutex guarantees that it's not being used by thread
+  printf("stopping thread: wait for thread to end\n");
+  pthread_mutex_lock(&pruWrite);
+  pthread_cancel(threadID);
   pthread_join(threadID, NULL);
-  
+  pthread_mutex_unlock(&pruWrite);
+
   // Cleanup
-  pthread_mutex_destroy(&stop);
+  cleanupThread();
   pthread_mutex_destroy(&pruWrite);
   printf("Circular Buffer program end\n");
 }
@@ -467,11 +467,23 @@ void buffer (void) {
 void main (void) {
   setbuf(stdout, NULL);
 
+  // Setup graceful (ctrl-c) out
+  signal(SIGINT, exitInterrupt);
+  signal(SIGTERM, exitInterrupt);
+  signal(SIGQUIT, exitInterrupt);
+
+
   // Global init
   sampleBuffer = malloc(HW_SIZE*BUFFER_SIZE);
+  if (!sampleBuffer) {
+    printf("sampleBuffer alloc failed\n");
+    return;
+  }
   pruSamples = malloc(HW_SIZE*PRU_SAMPLES_NUM);
-  if (!(sampleBuffer && pruSamples)) {
-    printf("mem alloc failed\n");
+  if (!pruSamples) {
+    printf("pruSamples alloc failed\n");
+    free(sampleBuffer);
+    return;
   }
   
   PRU0RamAddrOff = readFileVal(PRU0MAP_LOC "addr");
@@ -479,4 +491,5 @@ void main (void) {
   buffer();
 
   free(sampleBuffer);
+  free(pruSamples);
 }

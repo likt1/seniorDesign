@@ -110,6 +110,7 @@ READ_ALL_FIFO0:
   AND   channel, channel, 0xf       // select last 4 bits from channel
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
   AND   value, value, tmp1          // select last 12 bits from value
+  LSL   value, value, 4             // shift left 4 bits to upscale to 16 bit
   SBBO  value, out_buff, out_off, 4 // store value into out_buffer
   ADD   out_off, out_off, 2         // inc array offset value half to double store
 
