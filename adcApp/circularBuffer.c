@@ -299,12 +299,12 @@ void buffer (void) {
         }
         else if (strcmp(lbl, "MemoryLow") == 0) {
           if (strcmp(val, "True") == 0) {
-            newConfig.footSwitch = true;
+            newConfig.memoryLow = true;
           }
         }
         else if (strcmp(lbl, "IsRecording") == 0) {
           if (strcmp(val, "True") == 0) {
-            newConfig.footSwitch = true;
+            newConfig.isRecording = true;
           }
         }
         numLines++;
@@ -393,6 +393,9 @@ void buffer (void) {
       
         // Reset
         fclose(file);
+
+        // TODO: should check if file write was valid, then kick off dropbox sync / sd card save 
+        
         noop = false;
         save = false;
         start = -1;

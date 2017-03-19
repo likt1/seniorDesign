@@ -30,6 +30,8 @@ struct configs {
   bool footSwitch;
   char compRotary[CONFIG_SIZE];
   char timeRotary[CONFIG_SIZE];
+  bool memoryLow;
+  bool isRecording;
 };
 
 /* bit data structure:
