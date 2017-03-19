@@ -40,6 +40,13 @@ class DIO(object):
 def getValues():
     config = ConfigParser.SafeConfigParser()
     config.read(ini)
+
+    # NOTE: concurrent files reading /writing may cause us to except and / or
+    # load blanks, may want to have a 
+    # while config.get('DIO','CompRotary') == None:
+    #    time.sleep(0.1)
+    #    config.read(ini)
+    # this would effectively halt get / set ops until we have a valid handle
     
     CompRotary = config.get('DIO','CompRotary')
     TimeRotary = config.get('DIO','TimeRotary')

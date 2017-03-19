@@ -32,10 +32,15 @@ while True:
     if os.path.isfile("/root/conf/DIO.config"):
         f = open("/root/conf/DIO.config",'r')
         settings = f.readlines()
+
+        # if a file is writing concurently with our read, we may get an empty file
+        # in this case just continue iterating until a valid file is read
+        if len(settings) == 0:
+            continue 
+
         idxTime = settingsTime.index(settings[2].split("=",1)[1].strip()) # Time
         idxType = settingsType.index(settings[1].split("=",1)[1].strip()) # Type
-        currentSwitchState = settings[3].split("=",1)[1].strip() # switch
-        currentSwitchState = currentSwitchState in ["true", "True"]
+        currentSwitchState = settings[3].split("=",1)[1].strip() in ["true", "True"] # switch
         
         # May be used in future
         #prev_warning = settings[3].split(":",1)[1].strip()
