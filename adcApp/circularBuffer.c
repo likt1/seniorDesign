@@ -160,7 +160,7 @@ void *pruThread (void *var) {
       int i;
       // For each pru sample in buffer
       /*for (i = 0; i < PRU_SAMPLES_NUM; i++) {
-        // Save sample to circular bufferot end of file
+        // Save sample to circular buffer at end of file
         sampleBuffer[next] = pruSamples[i] << 4; // Upscale to 16b from 12b
         next++;
         if (next == BUFFER_SIZE) {
@@ -184,17 +184,17 @@ void *pruThread (void *var) {
       int overflow = freeSpace - PRU_SAMPLES_NUM;
       
       if (overflow >= 0) {
-        memcpy(&circularBuffer[next], pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
+        memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
         next += PRU_SAMPLES_NUM;
       }
       else {
-        memcpy(&circularBuffer[next], pruSamples, HW_SIZE*freeSpace);
+        memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*freeSpace);
         if (noOverflow) {
           next = start;
         }
         else {
-          int absOverflow = (-1)*overflow
-          memcpy(circularBuffer, &pruSamples[freeSpace], HW_SIZE*absOverflow);
+          int absOverflow = (-1)*overflow;
+          memcpy(sampleBuffer, &pruSamples[freeSpace], HW_SIZE*absOverflow);
           next = absOverflow;
         }
       }
