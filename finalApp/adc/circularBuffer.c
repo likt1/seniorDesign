@@ -429,6 +429,7 @@ void buffer (void) {
         fclose(file);
 
         // TODO: should check if file write was valid, then kick off dropbox sync / sd card save 
+        system("sh triggerSave.sh");
         
         noop = false;
         save = false;
