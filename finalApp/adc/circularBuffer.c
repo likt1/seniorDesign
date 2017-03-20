@@ -21,7 +21,6 @@ static volatile bool exitProg = 0;
 bool run = true;
 bool noop = false;
 bool save = false;
-pthread_mutex_t stop;
 pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
@@ -123,18 +122,17 @@ void *pruThread(void *var) {
     return NULL;
   }
   // ===============================
-  
-  // Start timer debug
-  int startTime = GetUTimeStamp();
 
+  // Init interp vars
+  int startTime = 0;
+  int diff = 0;
+  int interpSampNum = 0;
+  
   // MAIN PRU LOOP
   // ===============================
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    
-    // Stop timer debug
-    int diff = GetUTimeStamp() - startTime;
     // printf("PRU returned, event number %d.\n", r);
     
     if (!noop) {
@@ -144,9 +142,6 @@ void *pruThread(void *var) {
       memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
       // printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
     }
-
-    // Start timer debug
-    startTime = GetUTimeStamp();
     
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
@@ -155,55 +150,66 @@ void *pruThread(void *var) {
     if (r < 0) {
       printf("Failed to continue PRU!\n");
     }
- 
-    bool checkTimer = false; // set to true to skip buffer save and measure PRU timing only
-    if (!checkTimer) { // replace with noop in production
-      // Write to buffer
-      //bool youAreAFailure = false;
-      pthread_mutex_lock(&pruWrite); 
+    
+    if (!noop) {
+      // Start timer for interp
+      startTime = GetUTimeStamp();
       
+      // Write to buffer
+      pthread_mutex_lock(&pruWrite);
+      
+      // Interp previous missing time
+      //   When interpolating, assume we draw a line from x = 0 to interpSampNum
+      //   Calculate y then save to our circular buffer
       int i;
+      for (i = 0; i < interpSampNum; i++) { // Bresenham's Line Alg
+        sampleBuffer[next] = ((pruSamples[0] - sampleBuffer[next - 1])/interpSampNum)*i + sampleBuffer[next - 1];
+        next++;
+        if (next >= BUFFER_SIZE) { // Circle back if we reach max size
+          next = 0;
+        }
+      }
+      
       // Mass save into circularBuffer
-      int bufferLim;
+      int bufferLim; // Specify endpoint to save to
       bool noOverflow = false;
       if (start > next) {
         bufferLim = start;
-        noOverflow = true;
+        noOverflow = true; // Active recording will not overflow
       }
       else {
         bufferLim = BUFFER_SIZE;
       }
       
-      int freeSpace = bufferLim - next;
-      int overflow = freeSpace - PRU_SAMPLES_NUM;
+      int freeSpace = bufferLim - next; // Samples that can be stored in buffer
+      int overflow = freeSpace - PRU_SAMPLES_NUM; // Samples that will go over, negative if over max
       
-      if (overflow >= 0) {
+      if (overflow >= 0) { // We don't overflow, so save all of pru samples into buffer
         memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
         next += PRU_SAMPLES_NUM;
       }
-      else {
+      else { // Save to max limit, then reset if we overflow
         memcpy(&sampleBuffer[next], pruSamples, HW_SIZE*freeSpace);
-        if (noOverflow) {
+        if (noOverflow) { // Skip overflow and just set max stored in buffer
           next = start;
         }
-        else {
+        else { // Move overflow into beginning of buffer
           int absOverflow = (-1)*overflow;
           memcpy(sampleBuffer, &pruSamples[freeSpace], HW_SIZE*absOverflow);
           next = absOverflow;
         }
       }
       
-      if (next == start) {
-        printf("start val is:%d\n", start);
+      if (next == start) { // We have recorded max with active recording
+        //printf("start val is:%d\n", start);
         save = true;
         noop = true;
-        break;
+        break; // Break and noop
       }
       
       // Variables need to be updated for these lines to work now
       //if (sample != 0xfff0) { //DEBUG
       //  printf("Debug access:0x%X sample:0x%X virt_addr:0x%X ad_val:0x%X\n", buffOff, sample, virt_addr, *((word*) virt_addr));
-      //  youAreAFailure = true;
       //}
 
       //if (i == PRU_local.samples.length - 1) {
@@ -212,16 +218,12 @@ void *pruThread(void *var) {
       
       pthread_mutex_unlock(&pruWrite);
       
-      //if (youAreAFailure) {
-      //  printf("There were errors yo\n");
-      //}
-    }
-    else {
-      // Calc sec and sample rate debug
+      // Stop timer for interp
+      diff = GetUTimeStamp() - startTime;
+      
+      // Calc num for interp
       diff += diff < 0 ? 1000000 : 0;
-      float sec = diff / 1000000.0;
-      float rate = ((float) PRU_local.samples.length) / sec;
-      printf("Calculated sample rate:%.2f diff:%d\n", rate, diff);
+      interpSampNum = diff / 22; // Our usec per sample
     }
   }
   // ===============================
