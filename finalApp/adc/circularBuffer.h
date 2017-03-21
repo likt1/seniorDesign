@@ -15,7 +15,7 @@ typedef uint8_t byte;       // 8bit
 #define SAMPLE_RATE 44100 // Set sample rate
 #define RECORD_LENGTH 60 // DEBUG length is 30 sec
 #define BUFFER_SIZE (SAMPLE_RATE*RECORD_LENGTH) // Set buffer size
-#define PRU_SAMPLES_NUM 7950  // 8000 is 16kb so just a bit lower than that
+#define PRU_SAMPLES_NUM 5750  // 6000 is 12kb so just a bit lower than that
 #define PRU_DELAY 1980 // Amount of delay in PRU cycles
 
 #define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
@@ -38,23 +38,25 @@ struct configs {
 
 /* bit data structure:
 0x00 0x00 00 00 00 | addr
-  04   00 00 00 00 | stopFlag
-  08   00 00 00 00 | length
-  0C   00 00 00 00 | cap_delay
-  10   00 00 00 00 | timer
-  14   00 00 00 00 | flags
+  04   00 00 00 00 | length
+  08   00 00 00 00 | cap_delay
+  0C   00 00 00 00 | timer
+  10   00 00 00 00 | stopF
+  14   00 00 00 00 | buff1F
+  18   00 00 00 00 | buff2F
 */
 struct locals {
   struct {
-    word addr;  // address of DDR memory bank
-    word stopFlag;  // stop flag
-    word length;  // byte size of available DDR mem bank (non-zero triggers `scope capture)
+    word addr;  // address of first memory bank
+    word length;  // number of samples to record
   } samples;
 
   word cap_delay;  // extra delay to control capture frequency
 
   word timer; // counts number of ADC reads
-  word flags; // runtime flags
+  word stopF; // if set, pru halts
+  word buff1F; // if set, arm is reading this buffer and pru cannot write
+  word buff2F; // if set, arm is reading this buffer and pru cannot write
 };
 
 #endif

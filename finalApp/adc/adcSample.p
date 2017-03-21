@@ -11,24 +11,37 @@
 #define STATUS        0x0044
 #define STEPCONFIG    0x0054
 #define FIFO0COUNT    0x00e4
+#define SHARED_RAM    0x10000
+
+// Local offsets
+#define ADDR          0x0
+#define LENGTH        0x4
+#define CAP_DELAY     0x8
+#define TIMER         0xc
+#define STOP_F        0x10
+#define BUF1_F       0x14
+#define BUF2_F       0x18
 
 // Register allocations
-#define adc_      r6
-#define fifo0data r7
-#define out_buff  r8
-#define out_off   r9
-#define local     r10
+#define adc_           r6
+#define fifo0data      r7
+#define samp_off       r8
+#define samp_ind_off   r9
+#define buff_samp_off  r17
+#define local          r10
 
-#define value     r11
-#define channel   r12
-#define length    r13
-#define cap_delay r14
+#define value          r11
+#define channel        r12
+#define samp_amt       r13
+#define max_samp       r14
+#define cap_delay      r15
 
-#define tmp0      r1
-#define tmp1      r2
-#define tmp2      r3
-#define tmp3      r4
-#define tmp4      r5    // flag lookup tmp
+#define tmp0           r1
+#define tmp1           r2
+#define tmp2           r3
+#define tmp3           r4
+#define tmp4           r5    // flag lookup tmp
+#define tmp5           r16   // flag lookup tmp
 
 // 1 word is 4 bytes
 
@@ -42,14 +55,10 @@ START:
   
   MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
   MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
-  MOV   local, 0                    // local vars exist at 0 mem loc
+  MOV   local, ADDR                 // local vars exist at 0 mem loc
 
-  //LBBO tmp0, local, 0x14, 4         // eyecatcher check
-  //MOV  tmp1, 0xbeef1965
-  //QBNE QUIT, tmp0, tmp1
-
-  LBBO  out_buff, local, 0, 4       // word addr in locals
-  LBBO  cap_delay, local, 0xc, 4    // word cap_delay in locals
+  LBBO  buff_samp_off, local, ADDR, 4  // load buffer offset
+  LBBO  cap_delay, local, CAP_DELAY, 4 // load capture delay
 
   // Set up ADC
   // Disable first
@@ -83,21 +92,27 @@ FILL_STEPS:
   SBBO  tmp0, adc_, CONTROL, 4
 
 INIT_CAPTURE:
-  MOV   out_off, 0                  // reset offset
-  MOV   length, 0                   // reset length sampled
-
+  MOV   samp_ind_off, 0             // reset offset
+  MOV   samp_amt, 0                 // reset samp_amt sampled
+  LBBO  tmp4, local, BUF1_F, 4      // load buffer 1 entry flag and 
+  QBEQ  SET_BUF2, tmp4, 1           // branch to buffer 2 capture set if set
+  MOV   samp_off, buff_samp_off     // load addr from stored samp off
+  JMP   BEG_CAPTURE                 // begin sampling
+SET_BUF2:
+  MOV   samp_off, SHARED_RAM        // move shared ram offset into sample offset
+  
 BEG_CAPTURE:
   QBNE  CAPTURE_DELAY, cap_delay, 0 // check delay
 
 SAMPLE:
-  LBBO  tmp4, local, 0x04, 4        // look at continue bit (offset)
-  QBNE  EXIT, tmp4, 0               // wait for response from ARM
+  LBBO  tmp4, local, STOP_F, 4      // look at stop flag
+  QBNE  EXIT, tmp4, 1               // and exit if set
   
   MOV   tmp0, 0x1fe
   SBBO  tmp0, adc_, STEPCONFIG, 4   // write to STEPCONFIG to trigger cap
 
   // Inc values while waiting
-  ADD   length, length, 1           // inc length sampled
+  ADD   samp_amt, samp_amt, 1       // inc samp_amt sampled
   MOV   tmp1, 0xfff                 // init select reg for value
 
 WAIT_FOR_FIFO0:
@@ -111,20 +126,27 @@ READ_ALL_FIFO0:
   QBNE  READ_ALL_FIFO0, channel, 0  // only save channel 0
   AND   value, value, tmp1          // select last 12 bits from value
   LSL   value, value, 4             // shift left 4 bits to upscale to 16 bit
-  SBBO  value, out_buff, out_off, 4 // store value into out_buffer
-  ADD   out_off, out_off, 2         // inc array offset value half to double store
+  SBBO  value, samp_off, samp_ind_off, 4 // store value into sample offset
+  ADD   samp_ind_off, samp_ind_off, 2 // inc array offset value half to store halfwords
 
-  LBBO  tmp0, local, 0x08, 4        // grab max size
-  QBNE  BEG_CAPTURE, length, tmp0   // if num samples gotten !eq max, loop
+  LBBO  tmp0, local, LENGTH, 4      // grab max size
+  QBNE  BEG_CAPTURE, samp_amt, tmp0 // if num samples gotten !eq max, loop
 
-NOTIFY:  
-  MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
-WAIT_HERE:  
-  LBBO  tmp4, local, 0x14, 4        // look at continue bit (flag)
-  QBNE  WAIT_HERE, tmp4, 1          // wait for response from ARM
-  MOV   tmp4, 0                     // clear response
-  SBBO  tmp4, local, 0x14, 4
-  JMP   INIT_CAPTURE
+// Update and notify when buffer is filled
+  MOV   tmp4, 1                     // move set bit into tmp4
+  QBNE  UPD_BUF2, samp_off, buff_samp_off // if we are not on buffer 1 update buffer 2 flag
+  SBBO  tmp4, local, BUF1_F, 4      // buffer 1 is filled
+  JMP   NOTIFY
+UPD_BUF2:
+  SBBO  tmp4, local, BUF2_F, 4      // buffer 2 is filled
+NOTIFY:
+  MOV   R31.B0, PRU0_ARM_INT+16     // we are done with a buffer, fire interrupt to arm
+CHECK_FLAGS:
+  LBBO  tmp4, local, BUF1_F, 4      // look at buffer 1 flag
+  QBNE  INIT_CAPTURE, tmp4, 1       // start sampling if buffer 1 is open
+  LBBO  tmp4, local, BUF2_F, 4      // look at buffer 2 flag
+  QBNE  INIT_CAPTURE, tmp4, 1       // start sampling if buffer 2 is open
+  JMP   CHECK_FLAGS                 // else nothing is open so recheck
 
 CAPTURE_DELAY:
   MOV   tmp0, cap_delay
