@@ -25,7 +25,8 @@ pthread_mutex_t pruWrite;
 int next = 0;
 int start = -1;
 int fd;
-void *map_base;
+void *map_base1;
+void *map_base2;
 halfword *sampleBuffer;
 halfword *pruSamples;
 word PRU0RamAddrOff;
@@ -69,14 +70,21 @@ void *pruThread(void *var) {
   off_t mapLoc;
   mapLoc = PRU0RamAddrOff;
   //printf("mapLoc:0x%X ", mapLoc);
-      
-  map_base = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
-  if (map_base == (void *) -1) {
-    printf("Failed to map memory when accessing ram 0x%X.\n", mapLoc);
+  
+  map_base1 = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc);
+  if (map_base1 == (void *) -1) {
+    printf("Failed to map memory 1 when accessing ram 0x%X.\n", mapLoc);
     return NULL;
   }
-  //printf("map_base:0x%X\n", map_base);
-      
+  //printf("map_base1:0x%X\n", map_base1);
+  
+  map_base2 = mmap(0, MAP_SIZE, PROT_READ, MAP_SHARED, fd, mapLoc + SHARED_MEM_OFFSET);
+  if (map_base2 == (void *) -1) {
+    printf("Failed to map memory 2 when accessing ram 0x%X.\n", mapLoc);
+    return NULL;
+  }
+  //printf("map_base1:0x%X\n", map_base2);
+  
   // Allocate and init pru mem
   r = prussdrv_init();
   if (r != 0) {
@@ -101,11 +109,12 @@ void *pruThread(void *var) {
 
   // Load memory
   PRU_local.samples.addr = sizeof(PRU_local);
-  PRU_local.samples.stopFlag = 0;
   PRU_local.samples.length = PRU_SAMPLES_NUM;
   PRU_local.cap_delay = PRU_DELAY;
   PRU_local.timer = 0;
-  PRU_local.flags = 0;
+  PRU_local.stopF = 0;
+  PRU_local.buf1F = 0;
+  PRU_local.buf2F = 0;
   r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to write memory block\n");
@@ -127,6 +136,7 @@ void *pruThread(void *var) {
   int startTime = 0;
   int diff = 0;
   int interpSampNum = 0;
+  bool buf1 = true;
   
   // MAIN PRU LOOP
   // ===============================
@@ -135,17 +145,24 @@ void *pruThread(void *var) {
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
     // printf("PRU returned, event number %d.\n", r);
     
-    if (!noop) {
-      // Copy ram to local buffer
-      void * buffOff = map_base + PRU_local.samples.addr;
-      const void *virt_addr = buffOff;
-      memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
-      // printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
+    // Copy ram to local buffer
+    void * buffOff;
+    if (buf1) {
+      buffOff = map_base1 + PRU_local.samples.addr;
+      PRU_local.buf1F = 0;
+      buff1 = false;
     }
+    else {
+      buffOff = map_base2;
+      PRU_local.buf2F = 0;
+      buff1 = true;
+    }
+    const void *virt_addr = buffOff;
+    memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
+    // printf("Copied:0x%X->0x%X amt:%d\n", virt_addr, pruSamples, HW_SIZE*PRU_SAMPLES_NUM);
     
     // Continue PRU sampling
     prussdrv_pru_clear_event(PRU_EVTOUT_0, PRU0_ARM_INTERRUPT);
-    PRU_local.flags = 1;
     r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
     if (r < 0) {
       printf("Failed to continue PRU!\n");
@@ -235,17 +252,21 @@ void *pruThread(void *var) {
 void cleanupThread() {
   // Tell PRU to stop
   printf("Cleaning PRU vars\n");
-  PRU_local.samples.stopFlag = 1;
-  PRU_local.flags = 1;
-  prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
+  PRU_local.stopF = 1;
+  PRU_local.buf1F = 0;
+  PRU_local.buf2F = 0;
+  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
+  if (r < 0) {
+    printf("Failed to stop PRU!\n");
+  }
   
   // Disable PRU and close memory mappings
   prussdrv_pru_disable(PRU_NUM);
   prussdrv_exit();
   
   // Cleanup
-  if (map_base != (void *) -1) {
-    munmap(map_base, MAP_SIZE);
+  if (map_base1 != (void *) -1) {
+    munmap(map_base1, MAP_SIZE);
   }
   if (fd) {
     close(fd);

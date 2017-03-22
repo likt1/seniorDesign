@@ -29,6 +29,7 @@
 #define samp_ind_off   r9
 #define buff_samp_off  r17
 #define local          r10
+#define next_buf       r18
 
 #define value          r11
 #define channel        r12
@@ -56,6 +57,7 @@ START:
   MOV   adc_, ADC_BASE              // store ADC_BASE in adc_
   MOV   fifo0data, ADC_FIFO0DATA    // store ADC_FIFO0DATA in fifo0data
   MOV   local, ADDR                 // local vars exist at 0 mem loc
+  MOV   next_buf, 1                 // start on buffer 1
 
   LBBO  buff_samp_off, local, ADDR, 4  // load buffer offset
   LBBO  cap_delay, local, CAP_DELAY, 4 // load capture delay
@@ -94,11 +96,18 @@ FILL_STEPS:
 INIT_CAPTURE:
   MOV   samp_ind_off, 0             // reset offset
   MOV   samp_amt, 0                 // reset samp_amt sampled
+  
+  QBEQ  SET_BUFF2, next_buf, 2      // check if needs to go to buff 2
+SET_BUFF1:
   LBBO  tmp4, local, BUF1_F, 4      // load buffer 1 entry flag and 
-  QBEQ  SET_BUF2, tmp4, 1           // branch to buffer 2 capture set if set
+  QBEQ  SET_BUFF1, tmp4, 1          // don't leave until buffer 1 is ready
+  LSL   next_buf, next_buf, 1       // set buffer 2 to next buffer
   MOV   samp_off, buff_samp_off     // load addr from stored samp off
   JMP   BEG_CAPTURE                 // begin sampling
-SET_BUF2:
+SET_BUFF2:
+  LBBO  tmp4, local, BUF2_F, 4      // load buffer 2 entry flag and 
+  QBEQ  SET_BUFF2, tmp4, 1          // don't leave until buffer 2 is ready
+  LSR   next_buf, next_buf, 1       // set buffer 1 to next buffer
   MOV   samp_off, SHARED_RAM        // move shared ram offset into sample offset
   
 BEG_CAPTURE:
@@ -141,12 +150,7 @@ UPD_BUF2:
   SBBO  tmp4, local, BUF2_F, 4      // buffer 2 is filled
 NOTIFY:
   MOV   R31.B0, PRU0_ARM_INT+16     // we are done with a buffer, fire interrupt to arm
-CHECK_FLAGS:
-  LBBO  tmp4, local, BUF1_F, 4      // look at buffer 1 flag
-  QBNE  INIT_CAPTURE, tmp4, 1       // start sampling if buffer 1 is open
-  LBBO  tmp4, local, BUF2_F, 4      // look at buffer 2 flag
-  QBNE  INIT_CAPTURE, tmp4, 1       // start sampling if buffer 2 is open
-  JMP   CHECK_FLAGS                 // else nothing is open so recheck
+  JMP   INIT_CAPTURE                // jump to start of capture cycle
 
 CAPTURE_DELAY:
   MOV   tmp0, cap_delay

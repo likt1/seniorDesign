@@ -19,6 +19,7 @@ typedef uint8_t byte;       // 8bit
 #define PRU_DELAY 1980 // Amount of delay in PRU cycles
 
 #define PRU0MAP_LOC "/sys/class/uio/uio0/maps/map0/"
+#define SHARED_MEM_OFFSET 0x10000
 
 typedef char bool; // Define bool
 #define true 1
@@ -42,8 +43,8 @@ struct configs {
   08   00 00 00 00 | cap_delay
   0C   00 00 00 00 | timer
   10   00 00 00 00 | stopF
-  14   00 00 00 00 | buff1F
-  18   00 00 00 00 | buff2F
+  14   00 00 00 00 | buf1F
+  18   00 00 00 00 | buf2F
 */
 struct locals {
   struct {
@@ -55,8 +56,8 @@ struct locals {
 
   word timer; // counts number of ADC reads
   word stopF; // if set, pru halts
-  word buff1F; // if set, arm is reading this buffer and pru cannot write
-  word buff2F; // if set, arm is reading this buffer and pru cannot write
+  word buf1F; // if set, arm is reading this buffer and pru cannot write
+  word buf2F; // if set, arm is reading this buffer and pru cannot write
 };
 
 #endif
