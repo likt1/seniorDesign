@@ -42,7 +42,6 @@
 #define tmp2           r3
 #define tmp3           r4
 #define tmp4           r5    // flag lookup tmp
-#define tmp5           r16   // flag lookup tmp
 
 // 1 word is 4 bytes
 
@@ -97,16 +96,16 @@ INIT_CAPTURE:
   MOV   samp_ind_off, 0             // reset offset
   MOV   samp_amt, 0                 // reset samp_amt sampled
   
-  QBEQ  SET_BUFF2, next_buf, 2      // check if needs to go to buff 2
-SET_BUFF1:
+  QBEQ  SET_BUF2, next_buf, 2       // check if needs to go to buf 2
+SET_BUF1:
   LBBO  tmp4, local, BUF1_F, 4      // load buffer 1 entry flag and 
-  QBEQ  SET_BUFF1, tmp4, 1          // don't leave until buffer 1 is ready
+  QBEQ  SET_BUF1, tmp4, 1           // don't leave until buffer 1 is ready
   LSL   next_buf, next_buf, 1       // set buffer 2 to next buffer
   MOV   samp_off, buff_samp_off     // load addr from stored samp off
   JMP   BEG_CAPTURE                 // begin sampling
-SET_BUFF2:
+SET_BUF2:
   LBBO  tmp4, local, BUF2_F, 4      // load buffer 2 entry flag and 
-  QBEQ  SET_BUFF2, tmp4, 1          // don't leave until buffer 2 is ready
+  QBEQ  SET_BUF2, tmp4, 1           // don't leave until buffer 2 is ready
   LSR   next_buf, next_buf, 1       // set buffer 1 to next buffer
   MOV   samp_off, SHARED_RAM        // move shared ram offset into sample offset
   
@@ -115,7 +114,7 @@ BEG_CAPTURE:
 
 SAMPLE:
   LBBO  tmp4, local, STOP_F, 4      // look at stop flag
-  QBNE  EXIT, tmp4, 1               // and exit if set
+  QBNE  EXIT, tmp4, 0               // and exit if set
   
   MOV   tmp0, 0x1fe
   SBBO  tmp0, adc_, STEPCONFIG, 4   // write to STEPCONFIG to trigger cap
@@ -162,7 +161,7 @@ DELAY_LOOP:
 // debug
 QUIT:
   MOV   tmp4, value
-  SBBO  tmp4, local, 0x4, 4        // offset of local should be beef now
+  SBBO  tmp4, local, ADDR, 4        // offset of local should be beef now
   MOV   R31.B0, PRU0_ARM_INT+16     // fire interrupt
   WBS   R31.T30                     // wait for response from ARM
 EXIT:

@@ -133,9 +133,6 @@ void *pruThread(void *var) {
   // ===============================
 
   // Init interp vars
-  int startTime = 0;
-  int diff = 0;
-  int interpSampNum = 0;
   bool buf1 = true;
   
   // MAIN PRU LOOP
@@ -143,19 +140,19 @@ void *pruThread(void *var) {
   while (true) {
     // Wait for even compl from PRU, returns PRU_EVTOUT_0 num
     r = prussdrv_pru_wait_event(PRU_EVTOUT_0);
-    // printf("PRU returned, event number %d.\n", r);
+    //printf("PRU returned, event number %d.\n", r);
     
     // Copy ram to local buffer
     void * buffOff;
     if (buf1) {
       buffOff = map_base1 + PRU_local.samples.addr;
       PRU_local.buf1F = 0;
-      buff1 = false;
+      buf1 = false;
     }
     else {
       buffOff = map_base2;
       PRU_local.buf2F = 0;
-      buff1 = true;
+      buf1 = true;
     }
     const void *virt_addr = buffOff;
     memcpy(pruSamples, virt_addr, HW_SIZE*PRU_SAMPLES_NUM);
@@ -169,23 +166,8 @@ void *pruThread(void *var) {
     }
     
     if (!noop) {
-      // Start timer for interp
-      startTime = GetUTimeStamp();
-      
       // Write to buffer
       pthread_mutex_lock(&pruWrite);
-      
-      // Interp previous missing time
-      //   When interpolating, assume we draw a line from x = 0 to interpSampNum
-      //   Calculate y then save to our circular buffer
-      int i;
-      for (i = 0; i < interpSampNum; i++) { // Bresenham's Line Alg
-        sampleBuffer[next] = ((pruSamples[0] - sampleBuffer[next - 1])/interpSampNum)*i + sampleBuffer[next - 1];
-        next++;
-        if (next >= BUFFER_SIZE) { // Circle back if we reach max size
-          next = 0;
-        }
-      }
       
       // Mass save into circularBuffer
       int bufferLim; // Specify endpoint to save to
@@ -234,13 +216,6 @@ void *pruThread(void *var) {
       //}
       
       pthread_mutex_unlock(&pruWrite);
-      
-      // Stop timer for interp
-      diff = GetUTimeStamp() - startTime;
-      
-      // Calc num for interp
-      diff += diff < 0 ? 1000000 : 0;
-      interpSampNum = diff / 22; // Our usec per sample
     }
   }
   // ===============================
@@ -255,7 +230,7 @@ void cleanupThread() {
   PRU_local.stopF = 1;
   PRU_local.buf1F = 0;
   PRU_local.buf2F = 0;
-  r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
+  volatile int r = prussdrv_pru_write_memory(PRUSS0_PRU0_DATARAM, 0, (word *)&PRU_local, sizeof(PRU_local));
   if (r < 0) {
     printf("Failed to stop PRU!\n");
   }
