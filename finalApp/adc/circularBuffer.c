@@ -408,15 +408,14 @@ void buffer(void) {
           }
         }
       
-        // Write until we meet next (end)
-        do {
-          // write to file TODOM improve one by one?
-          fwrite(&sampleBuffer[start], sizeof(halfword), 1, file); // one by one, find out a way to save all
-          start++;
-          if (start == BUFFER_SIZE) {
-            start = 0;
-          }
-        } while (start != next);
+        // Batch write to file
+        if (next > start) {
+          fwrite(&sampleBuffer[start], HW_SIZE, next - start, file);
+        }
+        else {
+          fwrite(&sampleBuffer[start], HW_SIZE, BUFFER_SIZE - start, file);
+          fwrite(sampleBuffer, HW_SIZE, next, file);
+        }
       
         // Reset
         fclose(file);
