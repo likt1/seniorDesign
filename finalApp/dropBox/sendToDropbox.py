@@ -32,11 +32,11 @@ def main(fileName):
         sys.exit(1)
 
     try:
-        with open(fileName, 'rb') as f:
-            dbx.files_upload(f.read(),'/'+fileName, mute=True)
+        with open('/root/' + fileName, 'rb') as f:
+            dbx.files_upload(f.read(), fileName, mute=True)
         print("[!] Uploaded %s to Dropbox\n" % (fileName))
     except Exception as e:
-        print("Failed to upload %s\n%s" % (file, e))
+        print("Failed to upload %s\n%s" % (fileName, e))
         sys.exit(1)
 
 if __name__ == "__main__":

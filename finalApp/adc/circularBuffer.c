@@ -205,7 +205,6 @@ void *pruThread(void *var) {
         //printf("start val is:%d\n", start);
         save = true;
         noop = true;
-        break; // Break and noop
       }
       
       pthread_mutex_unlock(&pruWrite);
@@ -420,9 +419,9 @@ void buffer(void) {
         // Reset
         fclose(file);
 
-        // TODO: should check if file write was valid, then kick off dropbox sync / sd card save 
-        system("sh triggerSave.sh");
-        //system("python3 pushToDropbox.py testOut-44k1.wav");
+        // TODO: should check if file write was valid, then kick off dropbox sync / sd card save
+        char saveCommand[80] = "sh triggerSave.sh testOut.raw "; 
+        system(strcat(saveCommand, newConfig.compRotary));
         
         noop = false;
         save = false;
