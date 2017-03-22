@@ -47,6 +47,13 @@ def getValues():
     #    config.read(ini)
     # this would effectively halt get / set ops until we have a valid handle
     
+    while not 'CompRotary' in vars() or 'CompRotary' in globals():
+        config.read(ini)
+        try:
+            CompRotary = config.get('DIO','CompRotary')
+        except Exception as e:
+            print(e)
+    
     CompRotary = config.get('DIO','CompRotary')
     TimeRotary = config.get('DIO','TimeRotary')
     Footswitch = config.get('DIO','Footswitch')
@@ -61,6 +68,7 @@ def setValue(property, value):
     dio = getValues()
     
     config = MyConfigParser()
+    config.optionxform = str
     config.add_section('DIO')
     config.set('DIO',"CompRotary",dio.CompRotary)
     config.set('DIO',"TimeRotary",dio.TimeRotary)
@@ -73,11 +81,13 @@ def setValue(property, value):
         value = settingsTime[int(value)] 
     elif (property.lower() == "footswitch"):
         if dio.Footswitch.lower() == "true":
-            value = "false"
+            value = "False"
         else:
-            value = "true"
+            value = "True"
+    elif (property.lower() == "comprotary"):
+        value = value.lower()
 
-    config.set('DIO',property,value.lower())
+    config.set('DIO',property,value)
 
     with open(ini,'w') as cfgfile:
         config.write(cfgfile)

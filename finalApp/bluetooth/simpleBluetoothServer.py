@@ -150,9 +150,9 @@ while True:
                     command_type = command['type']                    
                     parameters = command['parameters']
                     print("[!] COMMAND TYPE [%s]" % command['type'])
-                except:
-                    pass
-                message = handleCommand(command_type,parameters)
+                    message = handleCommand(command_type,parameters)
+                except Exception as e:
+                    print(e)
             else:
                 break
     except Exception as e:

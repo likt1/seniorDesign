@@ -55,8 +55,7 @@ while True:
 
     if prevRotaryReading1 == -500000: # if init, set previous as current
         prevRotaryReading1 = currentReading
-        idxTime = 3
-        temp = temp.replace("yy",settingsTime[3])
+        temp = temp.replace("yy",settingsTime[getIndex(idxTime,len(settingsTime))])
         flag = 1
     
     if (currentReading - prevRotaryReading1) > 10:
@@ -79,8 +78,7 @@ while True:
 
     if prevRotaryReading2 == -500000: # if init, set previous as current
         prevRotaryReading2 = currentReading
-        idxType = 0
-        temp = temp.replace("xx",settingsType[0])
+        temp = temp.replace("xx",settingsType[getIndex(idxType,len(settingsType))])
         flag = 1
     
     if (currentReading - prevRotaryReading2) > 10:
