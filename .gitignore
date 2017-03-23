@@ -65,3 +65,4 @@ VM/.vagrant/*
 **/circularBuffer
 **/mem2file
 **/*.o
+**/copyToSD

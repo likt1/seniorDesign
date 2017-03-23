@@ -1,5 +1,8 @@
+#!/usr/bin/python3
 import subprocess
 import os
+
+print("dio program started\n")
 
 # ensure the pins are configured
 subprocess.call(['sh','/root/seniorDesign/finalApp/gpio/eqep-pin-config.sh'])

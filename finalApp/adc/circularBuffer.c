@@ -458,6 +458,8 @@ void buffer(void) {
 
 void main (void) {
   setbuf(stdout, NULL); // stdout shouldn't use buffer
+  
+  printf("main entered, starting threads\n");
 
   // Setup graceful (ctrl-c) out
   signal(SIGINT, exitInterrupt);
