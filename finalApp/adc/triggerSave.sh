@@ -15,7 +15,7 @@ sox ~/$DATE-r.$2 ~/$DATE.$2 noisered ~/conf/noise.prof 0.1
 # sync our wav with the cloud
 python3 /root/seniorDesign/finalApp/dropBox/sendToDropbox.py $DATE.$2
 
-#./copyToSD /root/$1 # For development testing 
-./copyToSD /root/$DATE.$2
+#/root/seniorDesign/finalApp/adc/copyToSD /root/$1 # For development testing 
+/root/seniorDesign/finalApp/adc/copyToSD /root/$DATE.$2
 
 # TODO add in rm to remove from local memory if needed

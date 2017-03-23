@@ -1,6 +1,8 @@
+#!/usr/bin/python3
 import time
 import EnablePWM 
 
+print("led program started\n")
 
 # get correct system pwm-chips and enable them accordingly
 pwm_chip_dict = EnablePWM.setupPWM()

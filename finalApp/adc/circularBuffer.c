@@ -420,7 +420,7 @@ void buffer(void) {
         fclose(file);
 
         // TODO: should check if file write was valid, then kick off dropbox sync / sd card save
-        char saveCommand[80] = "sh triggerSave.sh testOut.raw "; 
+        char saveCommand[80] = "sh /root/seniorDesign/finalApp/adc/triggerSave.sh testOut.raw "; 
         system(strcat(saveCommand, newConfig.compRotary));
         
         noop = false;
@@ -458,6 +458,8 @@ void buffer(void) {
 
 void main (void) {
   setbuf(stdout, NULL); // stdout shouldn't use buffer
+  
+  printf("main entered, starting threads\n");
 
   // Setup graceful (ctrl-c) out
   signal(SIGINT, exitInterrupt);

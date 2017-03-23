@@ -12,6 +12,9 @@ import pdb
 from subprocess import Popen, PIPE, STDOUT
 from time import sleep
 
+networks_file = '/root/networks'
+log_f = '/root/wifi_log'
+
 # object to store key network data...
 class NetworkItem(object):
     def __init__(self, id, status, ssid, serviceKey, security):
@@ -26,18 +29,18 @@ class NetworkItem(object):
         return json.dumps(self.__dict__)
 
 # start fresh
-if(os.path.isfile("log")):
-    os.remove("log")
-if(os.path.isfile("networks")):
-    os.remove("networks")
+if(os.path.isfile(log_f)):
+    os.remove(log_f)
+if(os.path.isfile(networks_file)):
+    os.remove(networks_file)
 
 # config file templates to be filled out based on selected network
 peap_template = "[global]\nName = <SSID>\nDescription = wifi.py autogen config PEAP\n\n[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nEAP = peap\nPhase2 = MSCHAPV2\nIdentity = <NETID>\nPassphrase = <PASSPHRASE>\n"
 single_auth_template = "[service_<SERVICEKEY>]\nType = wifi\nName = <SSID>\nPassphrase = <PASSPHRASE>\n"
 
 def setupWifi():
-    networks = open("networks","wb")
-    log = open("log","wb")
+    networks = open(networks_file,"wb")
+    log = open(log_f,"wb")
     
     print("untethering wifi...")
     command = ["connmanctl","tether","wifi","disable"]
@@ -51,8 +54,8 @@ def setupWifi():
     log.close()
 
 def scanNetworks(log_file = ''):
-    networks = open("networks","wb")
-    log = open("log","ab")
+    networks = open(networks_file,"wb")
+    log = open(log_f,"ab")
     network_items = []
 
     print("scanning for available networks...")
@@ -65,7 +68,7 @@ def scanNetworks(log_file = ''):
     # must close before reading
     networks.close()
     log.close()
-    networks_file = open("networks","r")
+    networks_file = open(networks_file,"r")
 
     available_networks = networks_file.readlines()
 
@@ -189,7 +192,7 @@ def configSettings(log_file, ssid, skey):
 def configureNetwork(log_file, selected_network, network_id="", pass_phrase=""):
     #pdb.set_trace()
     log_file.close()    
-    log = open("log","ab")
+    log = open(log_f,"ab")
     
     # based on selected security, (local only) prompt for username / password...
     if not pass_phrase and not network_id:
@@ -233,10 +236,10 @@ def configureNetwork(log_file, selected_network, network_id="", pass_phrase=""):
 
     # link config file to connman service
     log.close()
-    log_file = open("log","a")
+    log_file = open(log_f,"a")
     configSettings(log_file, selected_network.ssid, selected_network.serviceKey)
     log_file.close()
-    log = open("log","wb")
+    log = open(log_f,"wb")
 
     print("Attempting connection...")
     command = ["connmanctl","connect",selected_network.serviceKey]
@@ -248,13 +251,13 @@ def configureNetwork(log_file, selected_network, network_id="", pass_phrase=""):
 
 
     log.close()
-    log_file = open("log","a")
+    log_file = open(log_f,"a")
 
     return [i for i in network_items if i.ssid == selected_network.ssid]    
 
 # main...
 # setupWifi()
-# log_file = open("log","a")
+# log_file = open(log_f,"a")
 # network_items = scanNetworks(log_file)
 # showNetworks(log_file, network_items)
 # chosen_network = promptNetworks(log_file)

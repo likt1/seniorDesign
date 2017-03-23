@@ -12,6 +12,9 @@ import wifiScript as w
 import dioScript as d
 
 import subprocess
+
+print("starting bluetooth server\n")
+
 # guarantee that bluetooth is setup on the device
 subprocess.call(['sh','/root/seniorDesign/finalApp/bluetooth/configBT.sh'])
 
