@@ -18,7 +18,7 @@ import os
 import pwd
 import subprocess
 import sys
-
+import readline # handle special chars...
 # Validate the template file exists
 template_file = 'template-service.sh'
 if not os.path.isfile(template_file):
