@@ -1,6 +1,6 @@
-# NOTE: need to hook up wires and run sh pwm-pin-config.sh
 import time
 import EnablePWM 
+
 
 # get correct system pwm-chips and enable them accordingly
 pwm_chip_dict = EnablePWM.setupPWM()

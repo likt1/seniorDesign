@@ -1,9 +1,14 @@
 import os
 import glob
+import subprocess
 from collections import OrderedDict
 from pprint import pprint
 
 def setupPWM():
+    
+    # ensure pins are configured
+    subprocess.call(['sh','/root/seniorDesign/finalApp/gpio/pwm-pin-config.sh'])
+
     os.chdir('/sys/class/pwm/')
     chips = glob.glob('pwmchip*')
 

@@ -1,6 +1,9 @@
 import subprocess
 import os
 
+# ensure the pins are configured
+subprocess.call(['sh','/root/seniorDesign/finalApp/gpio/eqep-pin-config.sh'])
+
 sd_loc = "/media/store/sd-card"
 
 prevRotaryReading1 = -500000 # arbitrary init val

@@ -11,6 +11,10 @@ import pdb
 import wifiScript as w 
 import dioScript as d
 
+import subprocess
+# guarantee that bluetooth is setup on the device
+subprocess.call(['sh','/root/seniorDesign/finalApp/bluetooth/configBT.sh'])
+
 server_sock=bluetooth.BluetoothSocket( bluetooth.RFCOMM )
 
 port = 0
