@@ -128,7 +128,7 @@ void *pruThread(void *var) {
  
   //printf("size:%d obj:%d\n", PRU_local.samples.addr, sizeof(PRU_local));
   // Load and execute the PRU program on PRU
-  r = prussdrv_exec_program(PRU_NUM, "adcSample.bin");
+  r = prussdrv_exec_program(PRU_NUM, "/root/seniorDesign/finalApp/adc/adcSample.bin");
   if (r < 0) {
     printf("Failed to execute PRU program on PRU%d\n", PRU_NUM);
     prussdrv_exit();

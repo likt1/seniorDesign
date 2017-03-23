@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import subprocess
 import os
+from time import sleep
 
 print("dio program started\n")
 
@@ -33,6 +34,7 @@ def getIndex(val, length):
     return val%length
 
 while True:
+    sleep(0.1)
 
     # check file for previous settings (allows phone app to also modify...)    
     if os.path.isfile("/root/conf/DIO.config"):
