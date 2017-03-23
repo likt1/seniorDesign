@@ -10,6 +10,8 @@ DATE=$(echo $DATE | sed 's/:/_/g')
 # convert file (may need to be done in circular buffer)
 sox -r 44100 -e unsigned -b 16 -c 1 ~/$1 ~/$DATE-r.$2
 #sox ~/$DATE-r.$2 ~/$DATE.$2 noisered ~/conf/noise.prof 0.1 silence 1 0.1 1%
+
+# this line to cleans up noise
 sox ~/$DATE-r.$2 ~/$DATE.$2 noisered ~/conf/noise.prof 0.1
 
 # sync our wav with the cloud

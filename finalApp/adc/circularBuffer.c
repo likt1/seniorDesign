@@ -257,7 +257,7 @@ void buffer(void) {
   strncpy(curConfig.timeRotary, "\0", CONFIG_SIZE); // init to empty string
   strncpy(curConfig.compRotary, "\0", CONFIG_SIZE);
   
-  struct timespec sleepTime = {0, 30000000}; // sleep for 30 ms
+  struct timespec sleepTime = {0, 100000000}; // sleep for 100 ms
   
   // Init write mutex
   if (pthread_mutex_init(&pruWrite, NULL) != 0) {
