@@ -180,13 +180,13 @@ while True:
         # uncomment to audit df return
         #print(device, size, used, available, percent, mountpoint)
 
-        if int(available) < 300000 and flagSD == False:
+        if False:#int(available) < 300000 and flagSD == False:
             #print("warn the user, space available (in sd card) is below 30MB")
             flagSD = True
             temp = temp.replace("MemoryLow=False","MemoryLow=True") # write to 
             flag = 1
             
-        elif int(available) >= 300000 and flagSD == True:
+        elif False:#int(available) >= 300000 and flagSD == True:
             #print("space available is fine (for sd card)")
             flagSD = False
             temp = temp.replace("MemoryLow=True","MemoryLow=False") # write to config

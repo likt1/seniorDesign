@@ -3,6 +3,7 @@
 # $1 represents raw file, $2 represents compression type
 
 # create timestamp variable
+#tmp=$(TZ=":/US/Eastern" date + "%B_%d_%Y_%A_%T")
 tmp=$(date)
 DATE=$(echo $tmp | sed 's/ //g') 
 DATE=$(echo $DATE | sed 's/:/_/g') 
